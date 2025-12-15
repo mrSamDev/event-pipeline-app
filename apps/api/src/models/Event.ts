@@ -1,29 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
-
-// Extensible event types - add new types here as needed
-export enum EventType {
-  SESSION_START = 'session_start',
-  PAGE_VIEW = 'page_view',
-  SEARCH = 'search',
-  PURCHASE = 'purchase',
-  ADD_TO_CART = 'add_to_cart',
-  REMOVE_FROM_CART = 'remove_from_cart',
-  BUTTON_CLICK = 'button_click',
-  FORM_SUBMIT = 'form_submit',
-  VIDEO_PLAY = 'video_play',
-  VIDEO_PAUSE = 'video_pause',
-}
-
-// Canonical event shape - all events conform to this structure
-export interface IEvent {
-  eventId: string;          // UUID v4 for global uniqueness
-  userId: string;           // Client-provided user identifier
-  sessionId: string;        // Client-provided session identifier
-  type: EventType;          // Event type from enum
-  payload: Record<string, any>;  // Flexible JSON payload for event-specific data
-  occurredAt: Date;         // Client-reported timestamp (when event happened)
-  receivedAt: Date;         // Server timestamp (authoritative, prevents clock skew issues)
-}
+import { EventType, IEvent } from '@martech/types';
 
 // Mongoose document interface
 // Note: We use a custom _id (string) instead of ObjectId for eventId

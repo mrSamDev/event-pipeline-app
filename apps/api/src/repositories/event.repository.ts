@@ -1,4 +1,5 @@
-import { Event, IEvent, IEventDocument } from '../models/Event';
+import { IEvent } from '@martech/types';
+import { Event, IEventDocument } from '../models/Event';
 
 // Normalized event shape (used internally by the service layer)
 export interface NormalizedEvent extends IEvent {}
@@ -8,6 +9,30 @@ export interface UserJourneyOptions {
   from?: Date;    // Start date filter (inclusive)
   to?: Date;      // End date filter (inclusive)
   limit?: number; // Max number of events to return (default: 100)
+}
+
+export interface UserMetrics {
+  userId: string;
+  totalEvents: number;
+  totalSessions: number;
+  lastActive: Date;
+}
+
+export interface EventTypeCount {
+  type: string;
+  count: number;
+}
+
+export interface EventDayCount {
+  date: string;
+  count: number;
+}
+
+export interface AnalyticsStats {
+  totalUsers: number;
+  totalEvents: number;
+  eventsByType: EventTypeCount[];
+  eventsByDay: EventDayCount[];
 }
 
 // Repository pattern: Abstracts MongoDB operations from business logic
@@ -150,6 +175,126 @@ export class EventRepository {
       return await Event.countDocuments();
     } catch (error: any) {
       console.error('[EventRepository] getEventCount failed:', error.message);
+      throw error;
+    }
+  }
+
+  async getUserMetrics(options?: { page?: number; pageSize?: number }): Promise<{
+    users: UserMetrics[];
+    totalCount: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
+  }> {
+    try {
+      const page = options?.page || 1;
+      const pageSize = options?.pageSize || 10;
+      const skip = (page - 1) * pageSize;
+
+      const metricsAggregation = [
+        {
+          $group: {
+            _id: '$userId',
+            totalEvents: { $sum: 1 },
+            totalSessions: { $addToSet: '$sessionId' },
+            lastActive: { $max: '$occurredAt' }
+          }
+        },
+        {
+          $project: {
+            userId: '$_id',
+            totalEvents: 1,
+            totalSessions: { $size: '$totalSessions' },
+            lastActive: 1,
+            _id: 0
+          }
+        },
+        {
+          $sort: { lastActive: -1 as -1 }
+        }
+      ];
+
+      const [metrics, countResult] = await Promise.all([
+        Event.aggregate([
+          ...metricsAggregation,
+          { $skip: skip },
+          { $limit: pageSize }
+        ]),
+        Event.aggregate([
+          ...metricsAggregation,
+          { $count: 'total' }
+        ])
+      ]);
+
+      const totalCount = countResult[0]?.total || 0;
+      const totalPages = Math.ceil(totalCount / pageSize);
+
+      return {
+        users: metrics,
+        totalCount,
+        page,
+        pageSize,
+        totalPages
+      };
+    } catch (error: any) {
+      console.error('[EventRepository] getUserMetrics failed:', error.message);
+      throw error;
+    }
+  }
+
+  async getAnalyticsStats(): Promise<AnalyticsStats> {
+    try {
+      const totalUsers = await Event.distinct('userId').then(users => users.length);
+      const totalEvents = await Event.countDocuments();
+
+      const eventsByType = await Event.aggregate([
+        {
+          $group: {
+            _id: '$type',
+            count: { $sum: 1 }
+          }
+        },
+        {
+          $project: {
+            type: '$_id',
+            count: 1,
+            _id: 0
+          }
+        },
+        {
+          $sort: { count: -1 }
+        }
+      ]);
+
+      const eventsByDay = await Event.aggregate([
+        {
+          $group: {
+            _id: {
+              $dateToString: { format: '%Y-%m-%d', date: '$occurredAt' }
+            },
+            count: { $sum: 1 }
+          }
+        },
+        {
+          $project: {
+            date: '$_id',
+            count: 1,
+            _id: 0
+          }
+        },
+        {
+          $sort: { date: 1 }
+        }
+      ]);
+
+      return {
+        totalUsers,
+        totalEvents,
+        eventsByType,
+        eventsByDay
+      };
+    } catch (error: any) {
+      console.error('[EventRepository] getAnalyticsStats failed:', error.message);
       throw error;
     }
   }

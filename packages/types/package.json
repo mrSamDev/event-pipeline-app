@@ -1,0 +1,17 @@
+{
+  "name": "@martech/types",
+  "version": "1.0.0",
+  "description": "Shared TypeScript types for MarTech monorepo",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "keywords": ["types", "typescript"],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}
