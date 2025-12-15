@@ -17,8 +17,8 @@ Resources:
           ToPort: 22
           CidrIp: 0.0.0.0/0
         - IpProtocol: tcp
-          FromPort: 4000
-          ToPort: 4000
+          FromPort: 3000
+          ToPort: 3000
           CidrIp: 0.0.0.0/0
 
   EC2Role:
@@ -44,7 +44,7 @@ Resources:
     Type: AWS::EC2::Instance
     Properties:
       InstanceType: t3.micro
-      ImageId: ami-0f58b397bc5c1f2e8 # Amazon Linux 2 (ap-south-1)
+      ImageId: ami-00ca570c1b6d79f36 # Amazon Linux 2 (ap-south-1)
       KeyName: !Ref KeyName
       SecurityGroupIds:
         - !Ref AppSecurityGroup
@@ -56,24 +56,27 @@ Resources:
 
           yum update -y
 
-          # Install Node.js 20
+          # Node + tools
           curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
-          yum install -y nodejs git
+          yum install -y nodejs git amazon-cloudwatch-agent
 
-          # Enable Corepack and pin pnpm
           corepack enable
           corepack prepare pnpm@10.25.0 --activate
-
-          # Verify versions
-          node -v
-          pnpm -v
-
-          # Install PM2 globally
           npm install -g pm2
 
-          # Create app directory
+          # App
           mkdir -p /opt/app
           chown -R ec2-user:ec2-user /opt/app
+
+          su - ec2-user << 'EOF'
+          cd /opt/app
+          git clone https://github.com/mrSamDev/event-pipeline-app.git
+          cd event-pipeline-app
+          pnpm install
+          pnpm --filter api build
+          pm2 start apps/api/dist/index.js --name wbd-api
+          pm2 save
+          EOF
 
 Outputs:
   InstancePublicIP:
