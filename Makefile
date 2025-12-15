@@ -1,9 +1,15 @@
 .PHONY: deploy update delete describe status help
 
+# Load environment variables from .env file
+ifneq (,$(wildcard .env))
+    include .env
+    export
+endif
+
 STACK_NAME = wbd-martech-stack
 TEMPLATE_FILE = infra/cloudformation.yaml
 KEY_NAME = wbd-key
-REGION = ap-south-1
+REGION = us-east-1
 
 help:
 	@echo "Available commands:"
@@ -18,7 +24,10 @@ deploy:
 	aws cloudformation deploy \
 		--template-file $(TEMPLATE_FILE) \
 		--stack-name $(STACK_NAME) \
-		--parameter-overrides KeyName=$(KEY_NAME) \
+		--parameter-overrides \
+			KeyName=$(KEY_NAME) \
+			BackendCertificateArn=$(CERTIFICATE_ARN) \
+			FrontendCertificateArn=$(CERTIFICATE_ARN) \
 		--capabilities CAPABILITY_NAMED_IAM \
 		--region $(REGION)
 	@echo "Stack deployed successfully!"
