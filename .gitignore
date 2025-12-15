@@ -1,0 +1,81 @@
+# ======================
+# Dependencies
+# ======================
+node_modules/
+.pnpm-store/
+
+# ======================
+# Build outputs
+# ======================
+dist/
+build/
+out/
+coverage/
+
+# ======================
+# Environment variables
+# ======================
+.env
+.env.*
+!.env.example
+
+# ======================
+# Logs
+# ======================
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ======================
+# OS / Editor
+# ======================
+.DS_Store
+Thumbs.db
+.vscode/
+!.vscode/extensions.json
+.idea/
+
+# ======================
+# Runtime files
+# ======================
+*.pid
+*.seed
+*.pid.lock
+
+# ======================
+# Testing
+# ======================
+/coverage
+
+# ======================
+# Frontend specific
+# ======================
+apps/web/.vite/
+apps/web/dist/
+
+# ======================
+# Backend specific
+# ======================
+apps/api/dist/
+
+# ======================
+# Infrastructure / Cloud
+# ======================
+.aws/
+*.pem
+*.key
+
+# SSH keys
+infra/keys/
+*.pem
+*.key
+
+# ======================
+# Misc
+# ======================
+.cache/
+.tmp/
+.temp/
