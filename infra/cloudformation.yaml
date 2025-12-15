@@ -71,6 +71,7 @@ Resources:
           su - ec2-user << 'EOF'
           cd /opt/app
           git clone https://github.com/mrSamDev/event-pipeline-app.git
+          git checkout main
           cd event-pipeline-app
           pnpm install
           pnpm --filter api build
