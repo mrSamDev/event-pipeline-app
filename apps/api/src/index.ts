@@ -27,21 +27,25 @@ let ingestionService: EventIngestionService;
 function initializeApp(): void {
   const isDevelopment = process.env.NODE_ENV !== "production";
 
-  app.use(cors({
-    origin: isDevelopment
-      ? ["http://localhost:5173", "http://localhost:3000"]
-      : process.env.ALLOWED_ORIGINS?.split(",") || [],
-    credentials: true,
-  }));
+  app.use(
+    cors({
+      origin: isDevelopment ? ["http://localhost:5173", "http://localhost:3000"] : process.env.ALLOWED_ORIGINS?.split(",") || [],
+      credentials: true,
+    })
+  );
 
   app.use(express.json({ limit: "10mb" }));
   app.use(observabilityMiddleware);
   app.use(sessionMiddleware);
 
-  app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-    customCss: ".swagger-ui .topbar { display: none }",
-    customSiteTitle: "MarTech API Documentation",
-  }));
+  app.use(
+    "/api-docs",
+    swaggerUi.serve,
+    swaggerUi.setup(swaggerSpec, {
+      customCss: ".swagger-ui .topbar { display: none }",
+      customSiteTitle: "MarTech API Documentation",
+    })
+  );
 
   app.get("/api-docs.json", (_req, res) => {
     res.setHeader("Content-Type", "application/json");
@@ -90,6 +94,7 @@ async function bootstrap(): Promise<void> {
         healthCheck: `http://localhost:${PORT}/health`,
         metrics: `http://localhost:${process.env.PROMETHEUS_PORT || 9464}/metrics`,
         apiDocs: `http://localhost:${PORT}/api-docs`,
+        allowedOrigins: process.env.ALLOWED_ORIGINS || "Not set",
       });
     });
 

@@ -92,7 +92,7 @@ Resources:
           cat > /etc/nginx/conf.d/api.conf << 'NGINX_EOF'
           server {
               listen 80;
-              server_name api.mrsamdev.xyz;
+              server_name api-veritas.mrsamdev.xyz;
 
               location / {
                   proxy_pass http://localhost:3000;

@@ -84,7 +84,7 @@ export function initAuth() {
     baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
 
     // Trusted origins for CORS
-    trustedOrigins: process.env.BETTER_AUTH_TRUSTED_ORIGINS?.split(",") || [
+    trustedOrigins: process.env.ALLOWED_ORIGINS?.split(",") || [
       "http://localhost:3000",
       "http://localhost:5173", // Common Vite dev server port
     ],
