@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm --filter api add:*)",
+      "Bash(mkdir:*)",
+      "Bash(pnpm build:*)",
+      "Bash(pnpm --filter @martech/types build:*)",
+      "Bash(pnpm:*)",
+      "Bash(wc:*)",
+      "Bash(find:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

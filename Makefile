@@ -1,6 +1,5 @@
 .PHONY: deploy update delete describe status help
 
-# Load environment variables from .env file
 ifneq (,$(wildcard .env))
     include .env
     export
@@ -24,10 +23,9 @@ deploy:
 	aws cloudformation deploy \
 		--template-file $(TEMPLATE_FILE) \
 		--stack-name $(STACK_NAME) \
-		--parameter-overrides \
-			KeyName=$(KEY_NAME) \
-			BackendCertificateArn=$(CERTIFICATE_ARN) \
-			FrontendCertificateArn=$(CERTIFICATE_ARN) \
+		--parameter-overrides KeyName=$(KEY_NAME) \
+		MongoDBUri=$(MONGODB_URI) \
+		AllowedOrigins=$(VITE_API_URL) \
 		--capabilities CAPABILITY_NAMED_IAM \
 		--region $(REGION)
 	@echo "Stack deployed successfully!"

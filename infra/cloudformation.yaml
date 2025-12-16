@@ -6,13 +6,15 @@ Parameters:
     Type: AWS::EC2::KeyPair::KeyName
     Description: SSH Key for EC2 access
 
-  FrontendCertificateArn:
+  MongoDBUri:
     Type: String
-    Description: ACM certificate ARN (us-east-1) for martech.mrsamdev.xyz
+    NoEcho: true
+    Description: MongoDB connection string
 
-  BackendCertificateArn:
+  AllowedOrigins:
     Type: String
-    Description: ACM certificate ARN (us-east-1) for api.martech.mrsamdev.xyz
+    Default: ""
+    Description: Comma-separated CORS origins
 
 Resources:
   # --------------------
@@ -21,8 +23,12 @@ Resources:
   ALBSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Allow HTTP and HTTPS to ALB
+      GroupDescription: Allow HTTP, HTTPS, and SSH
       SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
@@ -31,27 +37,13 @@ Resources:
           FromPort: 443
           ToPort: 443
           CidrIp: 0.0.0.0/0
-      Tags:
-        - Key: Name
-          Value: wbd-martech-alb-sg
 
-  AppSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    DependsOn: ALBSecurityGroup
+  # Elastic IP for stable public addressing
+  AppEIP:
+    Type: AWS::EC2::EIP
     Properties:
-      GroupDescription: Allow SSH and API access from ALB
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 22
-          ToPort: 22
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: 3000
-          ToPort: 3000
-          SourceSecurityGroupId: !Ref ALBSecurityGroup
-      Tags:
-        - Key: Name
-          Value: wbd-martech-app-sg
+      Domain: vpc
+      InstanceId: !Ref AppInstance
 
   # --------------------
   # IAM for EC2
@@ -88,7 +80,7 @@ Resources:
         - !Ref AppSecurityGroup
       IamInstanceProfile: !Ref EC2InstanceProfile
       UserData:
-        Fn::Base64: |
+        Fn::Base64: !Sub |
           #!/bin/bash
           set -e
 
@@ -100,18 +92,70 @@ Resources:
           corepack prepare pnpm@10.25.0 --activate
           npm install -g pm2
 
+          # Nginx + Certbot (Amazon Linux 2023)
+          yum install -y nginx certbot python3-certbot-nginx
+
+          # Nginx site config (port 80 for Let's Encrypt validation)
+          cat > /etc/nginx/conf.d/api.conf << 'NGINX_EOF'
+          server {
+              listen 80;
+              server_name api.mrsamdev.xyz;
+
+              location / {
+                  proxy_pass http://localhost:3000;
+                  proxy_http_version 1.1;
+                  proxy_set_header Upgrade $http_upgrade;
+                  proxy_set_header Connection 'upgrade';
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto $scheme;
+                  proxy_cache_bypass $http_upgrade;
+              }
+          }
+          NGINX_EOF
+
+          # Enable and start Nginx
+          systemctl enable nginx
+          systemctl start nginx
+
+          # App
           mkdir -p /opt/app
           chown -R ec2-user:ec2-user /opt/app
 
-          su - ec2-user << 'EOF'
+          # Create .env file with secrets
+          cat > /opt/app/.env << 'APP_ENV_EOF'
+          MONGODB_URI=${MongoDBUri}
+          NODE_ENV=production
+          ALLOWED_ORIGINS=${AllowedOrigins}
+          APP_ENV_EOF
+
+          chown ec2-user:ec2-user /opt/app/.env
+          chmod 600 /opt/app/.env
+
+          # Setup PM2 to start on boot as ec2-user
+          su - ec2-user << 'SETUP_EOF'
           cd /opt/app
           git clone https://github.com/mrSamDev/event-pipeline-app.git
           cd event-pipeline-app
+          git checkout main
+
+          # Link .env from parent directory
+          ln -sf /opt/app/.env .env
+
           pnpm install
           pnpm --filter api build
+
+          # Start app (uses PORT env var, defaults to 3000)
           pm2 start apps/api/dist/index.js --name wbd-api
           pm2 save
-          EOF
+
+          # Configure PM2 to start on system boot
+          pm2 startup systemd -u ec2-user --hp /home/ec2-user
+          SETUP_EOF
+
+          # Execute the PM2 startup script generated above
+          env PATH=$PATH:/usr/bin /usr/lib/node_modules/pm2/bin/pm2 startup systemd -u ec2-user --hp /home/ec2-user
 
   # --------------------
   # Application Load Balancer
@@ -257,30 +301,35 @@ Resources:
                 AWS:SourceArn: !Sub arn:aws:cloudfront::${AWS::AccountId}:distribution/${WebDistribution}
 
 Outputs:
-  FrontendURL:
-    Description: CloudFront URL (martech.mrsamdev.xyz)
-    Value: !Sub https://${WebDistribution.DomainName}
+  ElasticIP:
+    Description: Elastic IP (use this for DNS A record)
+    Value: !Ref AppEIP
 
-  BackendALBDNS:
-    Description: Application Load Balancer DNS name
-    Value: !GetAtt BackendALB.DNSName
-
-  BackendURL:
-    Description: Backend API (api.martech.mrsamdev.xyz)
-    Value: !Sub https://${BackendALB.DNSName}
-
-  BackendALBHostedZoneId:
-    Description: ALB Hosted Zone ID (for Hostinger ALIAS/CNAME setup)
-    Value: !GetAtt BackendALB.CanonicalHostedZoneID
-
-  S3BucketName:
-    Description: S3 bucket name for frontend deployment
-    Value: !Ref WebAppBucket
-    Export:
-      Name: !Sub ${AWS::StackName}-WebAppBucket
-
-  CloudFrontDistributionId:
-    Description: CloudFront distribution ID for cache invalidation
-    Value: !Ref WebDistribution
-    Export:
-      Name: !Sub ${AWS::StackName}-CloudFrontDistributionId
+  InstanceId:
+    Description: EC2 Instance ID
+    Value: !Ref AppInstance
+# Post-deployment steps (run manually on EC2 after DNS is live):
+#
+# 1. SSH into instance:
+#    ssh -i your-key.pem ec2-user@<ELASTIC_IP>
+#
+# 2. Verify DNS points to Elastic IP:
+#    dig +short api.mrsamdev.xyz
+#
+# 3. Verify backend is running:
+#    curl http://localhost:3000
+#
+# 4. Verify Nginx is running:
+#    sudo systemctl status nginx
+#
+# 5. Issue SSL certificate (interactive, run once):
+#    sudo certbot --nginx -d api.mrsamdev.xyz
+#
+# 6. Verify HTTPS works:
+#    curl https://api.mrsamdev.xyz
+#
+# 7. Test certificate auto-renewal:
+#    sudo certbot renew --dry-run
+#
+# 8. Verify PM2 will restart on reboot:
+#    sudo systemctl status pm2-ec2-user
