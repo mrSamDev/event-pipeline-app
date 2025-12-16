@@ -28,9 +28,19 @@ let ingestionService: EventIngestionService;
 function initializeApp(): void {
   const isDevelopment = process.env.NODE_ENV !== "production";
 
+  const allowedOrigins = isDevelopment
+    ? ["http://localhost:5173", "http://localhost:3000"]
+    : process.env.ALLOWED_ORIGINS?.split(",").map(o => o.trim()) || [];
+
+  console.log("[CORS] Configuration:", {
+    isDevelopment,
+    allowedOrigins,
+    credentials: true,
+  });
+
   app.use(
     cors({
-      origin: isDevelopment ? ["http://localhost:5173", "http://localhost:3000"] : process.env.ALLOWED_ORIGINS?.split(",") || [],
+      origin: allowedOrigins,
       credentials: true,
     })
   );

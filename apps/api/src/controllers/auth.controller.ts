@@ -32,6 +32,18 @@ export class AuthController {
       // Use x-forwarded-proto to detect if request came through HTTPS (from nginx/ALB)
       const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
       const url = new URL(req.url, `${protocol}://${req.headers.host}`);
+
+      console.log("[Auth] Request details:", {
+        method: req.method,
+        path: req.url,
+        protocol,
+        fullUrl: url.toString(),
+        origin: req.headers.origin,
+        host: req.headers.host,
+        cookies: req.headers.cookie,
+        forwardedProto: req.headers['x-forwarded-proto'],
+      });
+
       const webRequest = new globalThis.Request(url, {
         method: req.method,
         headers: req.headers as any,
@@ -41,16 +53,30 @@ export class AuthController {
       // Better Auth handler returns a Response object
       const response = await auth.handler(webRequest);
 
+      console.log("[Auth] Response details:", {
+        status: response.status,
+        headers: Object.fromEntries(response.headers.entries()),
+      });
+
       // Set status code
       res.status(response.status);
 
       // Set headers
       response.headers.forEach((value, key) => {
         res.setHeader(key, value);
+        if (key.toLowerCase() === 'set-cookie') {
+          console.log("[Auth] Setting cookie:", value);
+        }
       });
 
       // Send body
       const body = await response.text();
+
+      // Log response body for session endpoints
+      if (req.url.includes('session') || req.url.includes('sign-in')) {
+        console.log("[Auth] Response body:", body.substring(0, 200));
+      }
+
       res.send(body);
     } catch (error: any) {
       console.error("[Auth] Error handling auth request:", error);
@@ -69,9 +95,21 @@ export class AuthController {
     try {
       const auth = getAuth();
 
+      console.log("[Auth] getSession - Request headers:", {
+        cookie: req.headers.cookie,
+        authorization: req.headers.authorization,
+        origin: req.headers.origin,
+      });
+
       // Better Auth provides a session object from the request
       const session = await auth.api.getSession({
         headers: req.headers as any,
+      });
+
+      console.log("[Auth] getSession - Session result:", {
+        hasSession: !!session,
+        userId: session?.user?.id,
+        sessionId: session?.session?.id,
       });
 
       if (!session) {
