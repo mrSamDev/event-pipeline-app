@@ -5,4 +5,7 @@ console.log("API_BASE: ", API_BASE);
 
 export const authClient = createAuthClient({
   baseURL: API_BASE,
+  fetchOptions: {
+    credentials: "include",
+  },
 });

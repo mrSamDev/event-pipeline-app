@@ -110,6 +110,13 @@ export function initAuth() {
       crossSubDomainCookies: {
         enabled: false,
       },
+      // Cookie options
+      cookieOptions: {
+        sameSite: "none", // Required for cross-origin cookies
+        secure: process.env.NODE_ENV === "production",
+        httpOnly: true,
+        path: "/",
+      },
     },
   });
 }
