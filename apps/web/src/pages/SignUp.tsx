@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { useNavigate, Link, Navigate } from 'react-router-dom';
 import { signUp, signUpSchema, useAuth } from '../features/auth';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Loader } from '../components/Loader';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
 import { BarChart3 } from 'lucide-react';
@@ -23,7 +24,7 @@ export function SignUp() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#004747] to-[#006666] flex items-center justify-center">
-        <div className="text-white text-lg">Loading...</div>
+        <Loader text="Loading..." />
       </div>
     );
   }
@@ -82,14 +83,14 @@ export function SignUp() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#004747] to-[#006666] flex items-center justify-center p-6">
+    <div className="min-h-screen bg-gradient-to-br from-[#004747] to-[#006666] flex items-center justify-center p-6 pb-32">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-3 text-white mb-2">
             <BarChart3 size={40} />
-            <h1 className="text-4xl font-bold">Analytics</h1>
+            <h1 className="text-4xl font-bold">Veritas</h1>
           </div>
-          <p className="text-white/80">Create an account to get started</p>
+          <p className="text-white/80">See the truth about your customers</p>
         </div>
 
         <Card>

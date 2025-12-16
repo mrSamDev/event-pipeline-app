@@ -16,7 +16,7 @@ export function useLogout() {
     mutationFn: signOut,
     onSuccess: () => {
       queryClient.setQueryData(['session'], null);
-      queryClient.clear();
+      queryClient.invalidateQueries({ queryKey: ['session'] });
     },
   });
 }

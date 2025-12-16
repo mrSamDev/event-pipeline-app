@@ -1,43 +1,32 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import {
-  useReactTable,
-  getCoreRowModel,
-  getPaginationRowModel,
-  flexRender,
-} from '@tanstack/react-table';
-import type { ColumnDef } from '@tanstack/react-table';
-import { useUsers } from '../features/users';
-import type { AppUserMetrics } from '../features/users';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '../components/ui/table';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useReactTable, getCoreRowModel, getPaginationRowModel, flexRender } from "@tanstack/react-table";
+import type { ColumnDef } from "@tanstack/react-table";
+import { useUsers } from "../features/users";
+import type { AppUserMetrics } from "../features/users";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { Loader } from "../components/Loader";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 
 const columns: ColumnDef<AppUserMetrics>[] = [
   {
-    accessorKey: 'userId',
-    header: 'User ID',
+    accessorKey: "userId",
+    header: "User ID",
     cell: (info) => <span className="font-mono text-sm">{info.getValue() as string}</span>,
   },
   {
-    accessorKey: 'totalSessions',
-    header: 'Total Sessions',
+    accessorKey: "totalSessions",
+    header: "Total Sessions",
     cell: (info) => <div className="text-right">{info.getValue() as number}</div>,
   },
   {
-    accessorKey: 'totalEvents',
-    header: 'Total Events',
+    accessorKey: "totalEvents",
+    header: "Total Events",
     cell: (info) => <div className="text-right">{info.getValue() as number}</div>,
   },
   {
-    accessorKey: 'formattedLastActive',
-    header: 'Last Active',
+    accessorKey: "formattedLastActive",
+    header: "Last Active",
   },
 ];
 
@@ -67,24 +56,6 @@ export function UsersOverview() {
     navigate(`/users/${userId}/journey`);
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">Loading users...</div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg text-red-600">
-          Error: {error instanceof Error ? error.message : 'Failed to load users'}
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="container mx-auto p-6 max-w-7xl">
       <div className="mb-6">
@@ -102,20 +73,25 @@ export function UsersOverview() {
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
                   {headerGroup.headers.map((header) => (
-                    <TableHead key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </TableHead>
+                    <TableHead key={header.id}>{header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}</TableHead>
                   ))}
                 </TableRow>
               ))}
             </TableHeader>
             <TableBody>
-              {table.getRowModel().rows.length === 0 ? (
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={columns.length} className="text-center py-8">
+                    <Loader size="sm" text="Loading..." />
+                  </TableCell>
+                </TableRow>
+              ) : error ? (
+                <TableRow>
+                  <TableCell colSpan={columns.length} className="text-center py-8">
+                    <div className="text-red-600">Error: {error instanceof Error ? error.message : "Failed to load users"}</div>
+                  </TableCell>
+                </TableRow>
+              ) : table.getRowModel().rows.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={columns.length} className="text-center text-gray-500">
                     No users found
@@ -123,15 +99,9 @@ export function UsersOverview() {
                 </TableRow>
               ) : (
                 table.getRowModel().rows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    onClick={() => handleUserClick(row.original.userId)}
-                    className="cursor-pointer"
-                  >
+                  <TableRow key={row.id} onClick={() => handleUserClick(row.original.userId)} className="cursor-pointer">
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </TableCell>
+                      <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
                     ))}
                   </TableRow>
                 ))
@@ -146,7 +116,7 @@ export function UsersOverview() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => table.previousPage()}
-                disabled={!table.getCanPreviousPage()}
+                disabled={!table.getCanPreviousPage() || isLoading}
                 className="px-3 py-1 border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
               >
                 Previous
@@ -156,7 +126,7 @@ export function UsersOverview() {
               </span>
               <button
                 onClick={() => table.nextPage()}
-                disabled={!table.getCanNextPage()}
+                disabled={!table.getCanNextPage() || isLoading}
                 className="px-3 py-1 border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
               >
                 Next

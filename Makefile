@@ -1,5 +1,10 @@
 .PHONY: deploy update delete describe status help
 
+ifneq (,$(wildcard .env))
+    include .env
+    export
+endif
+
 STACK_NAME = wbd-martech-stack
 TEMPLATE_FILE = infra/cloudformation.yaml
 KEY_NAME = wbd-key
@@ -19,6 +24,8 @@ deploy:
 		--template-file $(TEMPLATE_FILE) \
 		--stack-name $(STACK_NAME) \
 		--parameter-overrides KeyName=$(KEY_NAME) \
+		MongoDBUri=$(MONGODB_URI) \
+		AllowedOrigins=$(VITE_API_URL) \
 		--capabilities CAPABILITY_NAMED_IAM \
 		--region $(REGION)
 	@echo "Stack deployed successfully!"

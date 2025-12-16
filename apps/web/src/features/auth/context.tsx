@@ -14,11 +14,15 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { data: session, isLoading } = useSession();
-  console.log("session: ", session);
   const logoutMutation = useLogout();
 
   const logout = async () => {
-    await logoutMutation.mutateAsync();
+    try {
+      await logoutMutation.mutateAsync();
+    } catch (error) {
+      console.error("Logout failed:", error);
+      throw error;
+    }
   };
 
   const value: AuthContextValue = {
@@ -27,8 +31,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAuthenticated: !!session,
     logout,
   };
-
-  console.log("value: ", value);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

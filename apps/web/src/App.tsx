@@ -9,6 +9,7 @@ import { Login } from './pages/Login';
 import { SignUp } from './pages/SignUp';
 import { BarChart3, Users, LogOut } from 'lucide-react';
 import { Button } from './components/ui/button';
+import { Footer } from './components/Footer';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -28,15 +29,22 @@ function Navigation() {
   if (!isAuthenticated || isAuthPage) return null;
 
   async function handleLogout() {
-    await logout();
-    window.location.href = '/login';
+    try {
+      await logout();
+      window.location.href = '/login';
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
   }
 
   return (
     <nav className="bg-white border-b border-gray-200">
       <div className="container mx-auto px-6 py-4 max-w-7xl">
         <div className="flex items-center justify-between">
-          <div className="text-2xl font-bold text-[#004747]">Analytics Platform</div>
+          <div>
+            <div className="text-2xl font-bold text-[#004747]">Veritas</div>
+            <div className="text-xs text-gray-500">See the truth about your customers</div>
+          </div>
           <div className="flex items-center gap-6">
             <Link
               to="/dashboard"
@@ -115,9 +123,12 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <AuthProvider>
-          <div className="min-h-screen bg-gray-50 pb-16">
+          <div className="min-h-screen bg-gray-50 flex flex-col">
             <Navigation />
-            <AppRoutes />
+            <div className="flex-1">
+              <AppRoutes />
+            </div>
+            <Footer />
           </div>
         </AuthProvider>
       </BrowserRouter>

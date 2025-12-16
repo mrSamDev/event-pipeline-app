@@ -2,7 +2,7 @@ import { authClient } from "@/lib/authClient";
 import type { SignUpData, SignInData, Session } from "./schemas";
 
 export async function signUp(data: SignUpData) {
-  return authClient.$fetch("/api/auth/sign-up/email", {
+  return authClient.$fetch("/sign-up/email", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -12,7 +12,7 @@ export async function signUp(data: SignUpData) {
 }
 
 export async function signIn(data: SignInData) {
-  return authClient.$fetch("/api/auth/sign-in/email", {
+  return authClient.$fetch("/sign-in/email", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -22,9 +22,7 @@ export async function signIn(data: SignInData) {
 }
 
 export async function signOut() {
-  return authClient.$fetch("/api/auth/sign-out", {
-    method: "POST",
-  });
+  return authClient.signOut();
 }
 
 export async function getSession(): Promise<Session | null> {

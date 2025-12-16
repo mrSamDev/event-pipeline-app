@@ -2,6 +2,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useUserJourney, getEventIcon, formatEventType } from "../features/journey";
 import type { SessionGroup } from "../features/journey";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { Loader } from "../components/Loader";
 import { ArrowLeft } from "lucide-react";
 
 export function UserJourney() {
@@ -27,7 +28,7 @@ export function UserJourney() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">Loading user journey...</div>
+        <Loader text="Loading user journey..." />
       </div>
     );
   }

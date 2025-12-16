@@ -1,18 +1,9 @@
-import { useNavigate } from 'react-router-dom';
-import { useStats } from '../features/analytics';
-import type { EventByType } from '../features/analytics';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  LineChart,
-  Line,
-} from 'recharts';
+import { useNavigate } from "react-router-dom";
+import { useStats } from "../features/analytics";
+import type { EventByType } from "../features/analytics";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { Loader } from "../components/Loader";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
 
 export function Dashboard() {
   const navigate = useNavigate();
@@ -21,7 +12,7 @@ export function Dashboard() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">Loading dashboard...</div>
+        <Loader text="Loading dashboard..." />
       </div>
     );
   }
@@ -29,9 +20,7 @@ export function Dashboard() {
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg text-red-600">
-          Error: {error instanceof Error ? error.message : 'Failed to load stats'}
-        </div>
+        <div className="text-lg text-red-600">Error: {error instanceof Error ? error.message : "Failed to load stats"}</div>
       </div>
     );
   }
@@ -40,16 +29,8 @@ export function Dashboard() {
 
   return (
     <div className="container mx-auto p-6 max-w-7xl">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
-        <p className="text-gray-600 mt-2">Overview of user behavior and events</p>
-      </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-        <Card
-          className="cursor-pointer hover:shadow-md transition-shadow"
-          onClick={() => navigate('/')}
-        >
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate("/")}>
           <CardHeader>
             <CardTitle className="text-lg text-gray-600">Total Users</CardTitle>
           </CardHeader>
@@ -100,13 +81,7 @@ export function Dashboard() {
                     return date.toLocaleDateString();
                   }}
                 />
-                <Line
-                  type="monotone"
-                  dataKey="count"
-                  stroke="#004747"
-                  strokeWidth={2}
-                  dot={{ fill: '#004747' }}
-                />
+                <Line type="monotone" dataKey="count" stroke="#004747" strokeWidth={2} dot={{ fill: "#004747" }} />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
@@ -120,21 +95,9 @@ export function Dashboard() {
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={stats.eventsByType}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="type"
-                  tickFormatter={(value) =>
-                    value.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
-                  }
-                  angle={-45}
-                  textAnchor="end"
-                  height={100}
-                />
+                <XAxis dataKey="type" tickFormatter={(value) => value.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())} angle={-45} textAnchor="end" height={100} />
                 <YAxis />
-                <Tooltip
-                  labelFormatter={(value) =>
-                    value.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
-                  }
-                />
+                <Tooltip labelFormatter={(value) => value.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())} />
                 <Bar dataKey="count" fill="#004747" />
               </BarChart>
             </ResponsiveContainer>
@@ -154,9 +117,7 @@ export function Dashboard() {
                 .slice(0, 5)
                 .map((item: EventByType) => (
                   <div key={item.type} className="flex justify-between items-center py-2 border-b">
-                    <span className="font-medium">
-                      {item.type.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}
-                    </span>
+                    <span className="font-medium">{item.type.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())}</span>
                     <span className="text-gray-600">{item.count} events</span>
                   </div>
                 ))}
