@@ -1,16 +1,16 @@
-import { apiStatsSchema } from './schemas';
-import { analyticsTransformer } from './transformers';
-import type { AppStats } from './schemas';
+import { apiStatsSchema } from "./schemas";
+import { analyticsTransformer } from "./transformers";
+import type { AppStats } from "./schemas";
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_BASE = import.meta.env.VITE_API_URL || "https://api-veritas.mrsamdev.xyz";
 
 export async function fetchStats(): Promise<AppStats> {
   const response = await fetch(`${API_BASE}/stats`, {
-    credentials: 'include',
+    credentials: "include",
   });
 
   if (!response.ok) {
-    throw new Error('Failed to fetch stats');
+    throw new Error("Failed to fetch stats");
   }
 
   const apiData = await response.json();

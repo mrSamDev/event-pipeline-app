@@ -1,16 +1,16 @@
-import { apiJourneyResponseSchema } from './schemas';
-import { journeyTransformer } from './transformers';
-import type { SessionGroup } from './schemas';
+import { apiJourneyResponseSchema } from "./schemas";
+import { journeyTransformer } from "./transformers";
+import type { SessionGroup } from "./schemas";
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_BASE = import.meta.env.VITE_API_URL || "https://api-veritas.mrsamdev.xyz";
 
 export async function fetchUserJourney(userId: string): Promise<SessionGroup[]> {
   const response = await fetch(`${API_BASE}/users/${userId}/journey`, {
-    credentials: 'include',
+    credentials: "include",
   });
 
   if (!response.ok) {
-    throw new Error('Failed to fetch user journey');
+    throw new Error("Failed to fetch user journey");
   }
 
   const apiData = await response.json();
