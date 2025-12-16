@@ -6,16 +6,6 @@ Parameters:
     Type: AWS::EC2::KeyPair::KeyName
     Description: SSH Key for EC2 access
 
-  MongoDBUri:
-    Type: String
-    NoEcho: true
-    Description: MongoDB connection string
-
-  AllowedOrigins:
-    Type: String
-    Default: ""
-    Description: Comma-separated CORS origins
-
 Resources:
   FrontendBucket:
     Type: AWS::S3::Bucket
@@ -164,15 +154,9 @@ Resources:
           mkdir -p /opt/app
           chown -R ec2-user:ec2-user /opt/app
 
-          # Create .env file with secrets
-          cat > /opt/app/.env << 'APP_ENV_EOF'
-          MONGODB_URI=${MongoDBUri}
-          NODE_ENV=production
-          ALLOWED_ORIGINS=${AllowedOrigins}
-          APP_ENV_EOF
-
-          chown ec2-user:ec2-user /opt/app/.env
-          chmod 600 /opt/app/.env
+          # Note: .env.production will be copied from the repository during git clone
+          # The repository contains the production environment configuration
+          # This includes BETTER_AUTH_SECRET, BETTER_AUTH_URL, MONGODB_URI, etc.
 
           # Setup PM2 to start on boot as ec2-user
           su - ec2-user << 'SETUP_EOF'
@@ -181,8 +165,8 @@ Resources:
           cd event-pipeline-app
           git checkout main
 
-          # Link .env from parent directory
-          ln -sf /opt/app/.env .env
+          # Copy production env file
+          cp .env.production .env
 
           pnpm install
           pnpm --filter @martech/types build

@@ -29,7 +29,9 @@ export class AuthController {
 
       // Better Auth handler expects a Web Request object
       // Convert Express request to Web Request
-      const url = new URL(req.url, `http://${req.headers.host}`);
+      // Use x-forwarded-proto to detect if request came through HTTPS (from nginx/ALB)
+      const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+      const url = new URL(req.url, `${protocol}://${req.headers.host}`);
       const webRequest = new globalThis.Request(url, {
         method: req.method,
         headers: req.headers as any,

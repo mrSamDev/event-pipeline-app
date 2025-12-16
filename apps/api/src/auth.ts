@@ -55,6 +55,16 @@ function getMongoDb() {
 export function initAuth() {
   const db = getMongoDb();
 
+  const trustedOrigins = process.env.ALLOWED_ORIGINS?.split(",").map(o => o.trim()) || [
+    "http://localhost:3000",
+    "http://localhost:5173",
+  ];
+
+  console.log("[Auth] Initializing Better Auth with config:");
+  console.log(`  - baseURL: ${process.env.BETTER_AUTH_URL || "http://localhost:3000"}`);
+  console.log(`  - trustedOrigins:`, trustedOrigins);
+  console.log(`  - useSecureCookies: ${process.env.NODE_ENV === "production"}`);
+
   return betterAuth({
     database: mongodbAdapter(db, {
       // Don't provide client to disable transactions
@@ -84,10 +94,7 @@ export function initAuth() {
     baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
 
     // Trusted origins for CORS
-    trustedOrigins: process.env.ALLOWED_ORIGINS?.split(",") || [
-      "http://localhost:3000",
-      "http://localhost:5173", // Common Vite dev server port
-    ],
+    trustedOrigins,
 
     // Enable experimental features
     experimental: {

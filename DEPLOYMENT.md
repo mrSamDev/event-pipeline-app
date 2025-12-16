@@ -2,10 +2,75 @@
 
 This guide covers deploying the WBD Martech application using CloudFormation and GitHub Actions.
 
+## Quick Fix: BetterAuth Sessions Not Working
+
+If your sessions aren't persisting after deployment, run this on your EC2 instance:
+
+```bash
+cd /opt/app/event-pipeline-app
+git pull origin main
+cp .env.production .env
+pm2 restart wbd-api
+pm2 logs wbd-api --lines 20
+```
+
+**Root Cause**: `BETTER_AUTH_URL` must point to your API domain (`https://api-veritas.mrsamdev.xyz`), not your frontend domain. See [Environment Configuration](#environment-configuration) below.
+
+## Environment Configuration
+
+This project uses separate environment files:
+
+- **`.env`** - Local development (gitignored)
+- **`.env.production`** - Production configuration (committed to repo)
+- **`.env.example`** - Template for required variables
+
+### Critical Settings for BetterAuth
+
+The most important setting is `BETTER_AUTH_URL`. This **must** point to your API domain:
+
+```bash
+# ✅ CORRECT
+BETTER_AUTH_URL=https://api-veritas.mrsamdev.xyz
+
+# ❌ WRONG - DO NOT use frontend domain
+BETTER_AUTH_URL=https://dc3a9tlp5b5jk.cloudfront.net
+```
+
+**Why?** BetterAuth uses this URL to:
+- Generate callback URLs
+- Set cookie domains correctly
+- Validate session origins
+
+When it points to the frontend, cookies are set for the wrong domain and sessions fail.
+
+### Development Environment (.env)
+
+```bash
+PORT=3000
+NODE_ENV=development
+MONGODB_URI=mongodb://localhost:27017/martech
+VITE_API_URL=http://localhost:3000
+ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
+BETTER_AUTH_SECRET=your-dev-secret
+BETTER_AUTH_URL=http://localhost:3000
+```
+
+### Production Environment (.env.production)
+
+```bash
+PORT=3000
+NODE_ENV=production
+MONGODB_URI=mongodb://user:pass@host:27017/martech
+VITE_API_URL=https://api-veritas.mrsamdev.xyz
+ALLOWED_ORIGINS=https://www.veritas.mrsamdev.xyz,https://dc3a9tlp5b5jk.cloudfront.net
+BETTER_AUTH_SECRET=your-production-secret
+BETTER_AUTH_URL=https://api-veritas.mrsamdev.xyz
+```
+
 ## Architecture Overview
 
-- **Frontend**: React app hosted on S3 + CloudFront with custom domain `martech.mrsamdev.xyz`
-- **Backend**: Node.js API on EC2 behind Application Load Balancer with custom domain `api.martech.mrsamdev.xyz`
+- **Frontend**: React app hosted on S3 + CloudFront
+- **Backend**: Node.js API on EC2 with Nginx reverse proxy
 - **Infrastructure**: Managed via CloudFormation in **us-east-1** region
 
 ## Prerequisites
@@ -186,10 +251,16 @@ cd /opt/app/event-pipeline-app
 # Pull latest changes
 git pull origin main
 
+# Copy production environment
+cp .env.production .env
+
 # Rebuild and restart
 pnpm install
 pnpm --filter api build
 pm2 restart wbd-api
+
+# Check logs
+pm2 logs wbd-api
 ```
 
 ## Health Checks
@@ -212,6 +283,62 @@ curl https://api.martech.mrsamdev.xyz/health
 - **GitHub Actions**: Check repository → Actions tab
 
 ## Troubleshooting
+
+### Sessions Not Persisting
+
+**Symptom**: User can log in but session doesn't persist across page refreshes.
+
+**Solution**:
+```bash
+# SSH to EC2
+ssh -i <your-key.pem> ec2-user@<ec2-ip>
+
+# Check BETTER_AUTH_URL
+cat /opt/app/event-pipeline-app/.env | grep BETTER_AUTH_URL
+
+# Should show:
+# BETTER_AUTH_URL=https://api-veritas.mrsamdev.xyz
+
+# If wrong, fix it:
+cd /opt/app/event-pipeline-app
+cp .env.production .env
+pm2 restart wbd-api
+```
+
+### CORS Errors
+
+**Symptom**: Browser console shows CORS policy errors.
+
+**Solution**:
+```bash
+# Check allowed origins
+cat /opt/app/event-pipeline-app/.env | grep ALLOWED_ORIGINS
+
+# Should include your frontend domain
+# ALLOWED_ORIGINS=https://www.veritas.mrsamdev.xyz,https://dc3a9tlp5b5jk.cloudfront.net
+```
+
+### Cookies Not Being Set
+
+**Checklist**:
+1. HTTPS is enabled (required for secure cookies)
+2. `BETTER_AUTH_URL` points to API domain
+3. CORS credentials enabled (already in code)
+4. Check browser DevTools → Application → Cookies
+
+### View Logs
+
+```bash
+# PM2 logs
+pm2 logs wbd-api
+
+# Nginx logs
+sudo tail -f /var/log/nginx/error.log
+sudo tail -f /var/log/nginx/access.log
+
+# Application logs in production
+pm2 logs wbd-api --lines 100
+```
 
 ### Frontend not loading
 1. Check CloudFront distribution is deployed
@@ -247,6 +374,22 @@ aws cloudformation delete-stack --stack-name wbd-martech-stack --region us-east-
 ```bash
 aws s3 rm s3://wbd-martech-fe-<account-id>/ --recursive
 ```
+
+## Security Notes
+
+**WARNING**: `.env.production` contains production secrets and is committed to the repo.
+
+This is acceptable for:
+- Private repositories
+- Rapid iteration/testing
+- Small teams
+
+For enhanced security, consider:
+- AWS Secrets Manager
+- Environment variables in CI/CD
+- HashiCorp Vault
+
+**Never commit sensitive credentials to public repositories.**
 
 ## Cost Optimization
 
