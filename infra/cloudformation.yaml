@@ -17,6 +17,43 @@ Parameters:
     Description: Comma-separated CORS origins
 
 Resources:
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: veritas-fe-hosting
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: index.html
+
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendBucket
+      PolicyDocument:
+        Statement:
+          - Sid: PublicReadGetObject
+            Effect: Allow
+            Principal: '*'
+            Action: 's3:GetObject'
+            Resource: !Sub '${FrontendBucket.Arn}/*'
+          - Sid: GitHubCICDUpload
+            Effect: Allow
+            Principal:
+              AWS: 'arn:aws:iam::624968466448:user/github-user'
+            Action:
+              - 's3:PutObject'
+              - 's3:PutObjectAcl'
+              - 's3:DeleteObject'
+              - 's3:ListBucket'
+            Resource:
+              - !Sub '${FrontendBucket.Arn}/*'
+              - !GetAtt FrontendBucket.Arn
+
   AppSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -163,6 +200,14 @@ Resources:
           env PATH=$PATH:/usr/bin /usr/lib/node_modules/pm2/bin/pm2 startup systemd -u ec2-user --hp /home/ec2-user
 
 Outputs:
+  FrontendBucketName:
+    Description: S3 bucket name for frontend hosting
+    Value: !Ref FrontendBucket
+
+  FrontendWebsiteURL:
+    Description: S3 website endpoint URL
+    Value: !GetAtt FrontendBucket.WebsiteURL
+
   ElasticIP:
     Description: Elastic IP (use this for DNS A record)
     Value: !Ref AppEIP
