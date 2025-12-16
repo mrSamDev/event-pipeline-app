@@ -12,6 +12,7 @@ import { observabilityMiddleware } from "./middleware/observability.middleware";
 import { sessionMiddleware } from "./middleware/auth.middleware";
 import { connectDatabase } from "./database/connection";
 import { gracefulShutdown } from "./utils/shutdown";
+import { startDailyAnalyticsExportJob } from "./jobs/dailyAnalyticsExport.job";
 
 dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
 
@@ -96,6 +97,9 @@ async function bootstrap(): Promise<void> {
         apiDocs: `http://localhost:${PORT}/api-docs`,
         allowedOrigins: process.env.ALLOWED_ORIGINS || "Not set",
       });
+
+      // Start daily analytics export job after server is ready
+      startDailyAnalyticsExportJob();
     });
 
     process.on("SIGTERM", () => gracefulShutdown("SIGTERM", server, ingestionService));
