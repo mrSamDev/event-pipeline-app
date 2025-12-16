@@ -46,6 +46,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build types
+        run: pnpm --filter @martech/types build
+
       - name: Build frontend
         run: pnpm --filter web build
 
