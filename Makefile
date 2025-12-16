@@ -25,7 +25,7 @@ deploy:
 		--stack-name $(STACK_NAME) \
 		--parameter-overrides KeyName=$(KEY_NAME) \
 		MongoDBUri=$(MONGODB_URI) \
-		AllowedOrigins=$(VITE_API_URL) \
+		AllowedOrigins=$(ALLOWED_ORIGINS) \
 		--capabilities CAPABILITY_NAMED_IAM \
 		--region $(REGION)
 	@echo "Stack deployed successfully!"
