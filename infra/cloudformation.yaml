@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: WBD Martech Assessment - EC2 Backend + S3/CloudFront Frontend
+Description: WBD Martech Assessment - Basic EC2 Infra
 
 Parameters:
   KeyName:
@@ -17,10 +17,7 @@ Parameters:
     Description: Comma-separated CORS origins
 
 Resources:
-  # --------------------
-  # Security Groups
-  # --------------------
-  ALBSecurityGroup:
+  AppSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Allow HTTP, HTTPS, and SSH
@@ -45,9 +42,6 @@ Resources:
       Domain: vpc
       InstanceId: !Ref AppInstance
 
-  # --------------------
-  # IAM for EC2
-  # --------------------
   EC2Role:
     Type: AWS::IAM::Role
     Properties:
@@ -67,14 +61,11 @@ Resources:
       Roles:
         - !Ref EC2Role
 
-  # --------------------
-  # Backend EC2
-  # --------------------
   AppInstance:
     Type: AWS::EC2::Instance
     Properties:
       InstanceType: t3.micro
-      ImageId: ami-03f9680ef0c07a3d1 # Amazon Linux 2 (us-east-1)
+      ImageId: ami-00ca570c1b6d79f36 # Amazon Linux 2 (ap-south-1)
       KeyName: !Ref KeyName
       SecurityGroupIds:
         - !Ref AppSecurityGroup
@@ -85,6 +76,8 @@ Resources:
           set -e
 
           yum update -y
+
+          # Node + tools
           curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
           yum install -y nodejs git amazon-cloudwatch-agent
 
@@ -144,6 +137,7 @@ Resources:
           ln -sf /opt/app/.env .env
 
           pnpm install
+          pnpm --filter @martech/types build
           pnpm --filter api build
 
           # Start app (uses PORT env var, defaults to 3000)
@@ -156,149 +150,6 @@ Resources:
 
           # Execute the PM2 startup script generated above
           env PATH=$PATH:/usr/bin /usr/lib/node_modules/pm2/bin/pm2 startup systemd -u ec2-user --hp /home/ec2-user
-
-  # --------------------
-  # Application Load Balancer
-  # --------------------
-  BackendALB:
-    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
-    DependsOn: ALBSecurityGroup
-    Properties:
-      Name: wbd-martech-backend-alb
-      Type: application
-      Scheme: internet-facing
-      SecurityGroups:
-        - !Ref ALBSecurityGroup
-      SubnetMappings:
-        - SubnetId: subnet-08b40746d0b77f013
-        - SubnetId: subnet-0dc699d72a681e728
-
-  BackendTargetGroup:
-    Type: AWS::ElasticLoadBalancingV2::TargetGroup
-    Properties:
-      Name: wbd-martech-backend-tg
-      Port: 3000
-      Protocol: HTTP
-      VpcId: !GetAtt AppInstance.VpcId
-      TargetType: instance
-      HealthCheckEnabled: true
-      HealthCheckPath: /health
-      HealthCheckIntervalSeconds: 30
-      HealthCheckTimeoutSeconds: 5
-      HealthyThresholdCount: 2
-      UnhealthyThresholdCount: 3
-      Targets:
-        - Id: !Ref AppInstance
-
-  BackendHTTPSListener:
-    Type: AWS::ElasticLoadBalancingV2::Listener
-    Properties:
-      LoadBalancerArn: !Ref BackendALB
-      Port: 443
-      Protocol: HTTPS
-      Certificates:
-        - CertificateArn: !Ref BackendCertificateArn
-      DefaultActions:
-        - Type: forward
-          TargetGroupArn: !Ref BackendTargetGroup
-
-  BackendHTTPListener:
-    Type: AWS::ElasticLoadBalancingV2::Listener
-    Properties:
-      LoadBalancerArn: !Ref BackendALB
-      Port: 80
-      Protocol: HTTP
-      DefaultActions:
-        - Type: redirect
-          RedirectConfig:
-            Protocol: HTTPS
-            Port: "443"
-            StatusCode: HTTP_301
-
-  # --------------------
-  # Frontend S3
-  # --------------------
-  WebAppBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: !Sub wbd-martech-fe-${AWS::AccountId}
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: true
-        BlockPublicPolicy: true
-        IgnorePublicAcls: true
-        RestrictPublicBuckets: true
-
-  # --------------------
-  # CloudFront OAC
-  # --------------------
-  CloudFrontOAC:
-    Type: AWS::CloudFront::OriginAccessControl
-    Properties:
-      OriginAccessControlConfig:
-        Name: wbd-martech-oac
-        OriginAccessControlOriginType: s3
-        SigningBehavior: always
-        SigningProtocol: sigv4
-
-  # --------------------
-  # CloudFront Distribution
-  # --------------------
-  WebDistribution:
-    Type: AWS::CloudFront::Distribution
-    Properties:
-      DistributionConfig:
-        Enabled: true
-        DefaultRootObject: index.html
-
-        Aliases:
-          - martech.mrsamdev.xyz
-
-        Origins:
-          - Id: WebS3Origin
-            DomainName: !GetAtt WebAppBucket.RegionalDomainName
-            OriginAccessControlId: !GetAtt CloudFrontOAC.Id
-            S3OriginConfig: {}
-
-        DefaultCacheBehavior:
-          TargetOriginId: WebS3Origin
-          ViewerProtocolPolicy: redirect-to-https
-          AllowedMethods: [GET, HEAD]
-          CachedMethods: [GET, HEAD]
-          Compress: true
-          ForwardedValues:
-            QueryString: false
-
-        CustomErrorResponses:
-          - ErrorCode: 403
-            ResponseCode: 200
-            ResponsePagePath: /index.html
-          - ErrorCode: 404
-            ResponseCode: 200
-            ResponsePagePath: /index.html
-
-        ViewerCertificate:
-          AcmCertificateArn: !Ref FrontendCertificateArn
-          SslSupportMethod: sni-only
-          MinimumProtocolVersion: TLSv1.2_2021
-
-  # --------------------
-  # S3 Bucket Policy
-  # --------------------
-  WebBucketPolicy:
-    Type: AWS::S3::BucketPolicy
-    Properties:
-      Bucket: !Ref WebAppBucket
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: cloudfront.amazonaws.com
-            Action: s3:GetObject
-            Resource: !Sub ${WebAppBucket.Arn}/*
-            Condition:
-              StringEquals:
-                AWS:SourceArn: !Sub arn:aws:cloudfront::${AWS::AccountId}:distribution/${WebDistribution}
 
 Outputs:
   ElasticIP:

@@ -33,10 +33,12 @@ describe('EventsController', () => {
     controller = new EventsController(mockIngestionService, mockRepository);
 
     jsonMock = vi.fn();
-    statusMock = vi.fn().mockReturnValue({ json: jsonMock });
+    statusMock = vi.fn();
     mockResponse = {
       status: statusMock,
-    };
+      json: jsonMock,
+    } as any;
+    statusMock.mockReturnValue(mockResponse);
   });
 
   describe('ingestEvent', () => {

@@ -90,15 +90,17 @@ describe('authMiddleware', () => {
   beforeEach(() => {
     mockRequest = {};
     jsonMock = vi.fn();
-    statusMock = vi.fn().mockReturnValue({ json: jsonMock });
+    statusMock = vi.fn();
     mockResponse = {
       status: statusMock,
-    };
+      json: jsonMock,
+    } as any;
+    statusMock.mockReturnValue(mockResponse);
     mockNext = vi.fn();
   });
 
   it('calls next when user is authenticated', () => {
-    mockRequest.user = { id: 'user123', email: 'test@test.com' };
+    mockRequest.user = { id: 'user123', email: 'test@test.com', name: 'Test User' };
 
     authMiddleware(
       mockRequest as Request,

@@ -8,7 +8,7 @@ endif
 STACK_NAME = wbd-martech-stack
 TEMPLATE_FILE = infra/cloudformation.yaml
 KEY_NAME = wbd-key
-REGION = us-east-1
+REGION = ap-south-1
 
 help:
 	@echo "Available commands:"

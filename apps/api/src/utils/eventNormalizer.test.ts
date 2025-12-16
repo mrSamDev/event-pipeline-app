@@ -33,7 +33,7 @@ describe('normalizeEvent', () => {
     const rawEvent = {
       userId: 'user123',
       sessionId: 'session456',
-      type: EventType.CLICK,
+      type: EventType.BUTTON_CLICK,
     };
 
     const normalized = normalizeEvent(rawEvent);
