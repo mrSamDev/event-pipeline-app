@@ -47,11 +47,20 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Extract version
+        id: version
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
       - name: Build types
         run: pnpm --filter @martech/types build
 
       - name: Build frontend
         run: pnpm --filter web build
+        env:
+          VITE_APP_VERSION: ${{ env.VERSION }}
 
       - name: Sync to S3
         uses: jakejarvis/s3-sync-action@master
@@ -64,7 +73,18 @@ jobs:
           AWS_REGION: ${{ env.AWS_REGION }}
           SOURCE_DIR: "apps/web/dist"
 
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
+            --paths "/*"
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ env.AWS_REGION }}
+
       - name: Deployment complete
         run: |
           echo "Frontend deployed successfully"
-          echo "Tag: ${{ github.ref_name }}"
+          echo "Version: ${{ env.VERSION }}"
+          echo "CloudFront cache invalidated"
