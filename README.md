@@ -1,10 +1,12 @@
 # MarTech Event Analytics Platform
 
-Event tracking and analytics for online shopping platforms. Handles 1M+ daily events across 500K+ users. Built for production.
+Event tracking and analytics for online shopping platforms. Handles 1M+ daily events across 500K+ users.
+
+Reference implementation for scalable event ingestion and analytics systems.
 
 ## What It Does
 
-Ingests events in real time, tracks user activity, shows analytics dashboards. Designed for 10,000 events/sec. Deployed with Infrastructure as Code on AWS.
+Ingests events in real time, tracks user activity, shows analytics dashboards. Designed and load-tested up to ~10,000 events/sec. Deployed with Infrastructure as Code on AWS.
 
 The system buffers events in memory before writing to MongoDB in batches. This keeps the database from choking during traffic spikes. Events never get updated once written, only read.
 
@@ -57,11 +59,13 @@ Events hit the API and return 202 immediately. Buffer flushes every 200ms or whe
 ## What's Built
 
 Database (L2, 67%):
+
 - Mongoose schema with compound indexes
 - MongoDB Atlas M0 Free Tier, connection pooling
 - No external integrations
 
 Backend/API (L5, 100%):
+
 - OpenAPI 3.0 spec, Swagger UI
 - Express.js, layered architecture
 - AWS EC2, Nginx, SSL/TLS
@@ -69,20 +73,23 @@ Backend/API (L5, 100%):
 - Daily export job, S3 at 10 UTC
 
 Cloud/DevOps (L4, 100%):
+
 - Architecture diagrams
 - Full AWS deployment running
 - GitHub Actions for frontend
 - CloudFormation with Makefile
 
 Frontend (L4, 83%):
+
 - User stories, wireframes
 - React 19, Tailwind CSS v4
 - Data viz with Recharts
 - Auth forms, Zod validation
 - S3 + CloudFront
-- No admin panel
+- No admin panel (prioritized ingestion scalability over RBAC)
 
 Dashboards (L4, 100%):
+
 - OpenTelemetry + Prometheus + CloudWatch
 - KPIs and charts with Recharts
 
@@ -101,6 +108,7 @@ Monorepo: pnpm workspaces. Fast, disk-efficient. 3x faster than npm, 2x faster t
 ## Deployment
 
 Production:
+
 - Frontend: https://www.veritas.mrsamdev.xyz
 - Backend: https://api-veritas.mrsamdev.xyz
 - API Docs: https://api-veritas.mrsamdev.xyz/api-docs
@@ -138,20 +146,24 @@ make events          # Stack events
 ## API
 
 Authentication:
+
 - `POST /api/auth/sign-up/email` - Register
 - `POST /api/auth/sign-in/email` - Login
 - `POST /api/auth/sign-out` - Logout
 - `GET /api/auth/get-session` - Current session
 
 Events:
+
 - `POST /events` - Ingest events (public, 202 Accepted)
 - `GET /users/:userId/journey` - User journey (protected)
 
 Analytics:
+
 - `GET /stats` - System stats and KPIs (protected)
 - `GET /users` - List users (protected)
 
 Health:
+
 - `GET /health` - Health check, database status
 
 Full docs at `/api-docs`. Try requests directly in the browser.
@@ -163,15 +175,17 @@ Full docs at `/api-docs`. Try requests directly in the browser.
 Adding new types takes three steps:
 
 1. Update the enum in `packages/types/src/event.types.ts`:
+
 ```typescript
 export enum EventType {
   // ... existing types
-  CHECKOUT_START = 'checkout_start',
-  PAYMENT_FAILED = 'payment_failed',
+  CHECKOUT_START = "checkout_start",
+  PAYMENT_FAILED = "payment_failed",
 }
 ```
 
 2. Rebuild types:
+
 ```bash
 pnpm --filter @martech/types build
 ```
@@ -187,6 +201,8 @@ Scales to 100+ event types without refactoring.
 Buffer-based batching. Events collect in memory, flush to MongoDB in batches. Two triggers: 200ms timer or 2,000 events.
 
 Gets you 10,000 events/sec capacity, reduced database load, backpressure handling when the buffer hits 10,000. Prometheus tracks it all.
+
+If the buffer reaches capacity, the API applies backpressure by rejecting new events with 429 until the buffer drains.
 
 Code: [apps/api/src/services/eventIngestion.service.ts](apps/api/src/services/eventIngestion.service.ts)
 
@@ -225,6 +241,7 @@ martech/
 Why pnpm? Saves disk space with content-addressable storage. One copy of each package version, ever. Strict dependency resolution prevents phantom dependencies. Built-in workspace support.
 
 Commands:
+
 - `pnpm -r build` - Parallel builds
 - `pnpm -r --parallel dev` - Run all services
 - `pnpm --filter api test` - Filter specific packages
@@ -242,7 +259,8 @@ HTTP: request counts by route and method, response times, error rates
 System: memory usage (heap, RSS, external), CPU usage, GC metrics
 
 Access metrics:
-- Prometheus: http://localhost:9464/metrics (local), https://api-veritas.mrsamdev.xyz:9464/metrics (production)
+
+- Prometheus: http://localhost:9464/metrics (local)
 - CloudWatch: AWS Console
 - Grafana: [Production Dashboard](http://my-support-services-grafana-d8870c-194-238-23-211.traefik.me/d/tmsOtSxZk/amazon-ec2?orgId=1)
 
@@ -315,52 +333,62 @@ martech/
 
 Selected challenge: "Increased number of daily events by 5 times"
 
-The system handles a 5x increase in daily event volume (1M to 5M events/day) through buffered ingestion, batch database writes, append-only event storage. Load testing proves it works.
+The system handles a 5x increase in daily event volume (1M to 5M events/day) through buffered ingestion, batch database writes, append-only event storage. Load testing validates the design.
+
+Key implementation files:
+
+- Event ingestion: [apps/api/src/services/eventIngestion.service.ts](apps/api/src/services/eventIngestion.service.ts)
+- Batch writes: [apps/api/src/repositories/event.repository.ts](apps/api/src/repositories/event.repository.ts)
+- Schema design: [apps/api/src/models/Event.ts](apps/api/src/models/Event.ts)
+- Infrastructure: [infra/cloudformation.yaml](infra/cloudformation.yaml)
+- Metrics: [apps/api/src/observability/](apps/api/src/observability/)
 
 ### Design
 
-In-memory buffering: Events collect in memory before database writes. Dual-trigger flushing (time-based + size-based). Prevents database overload during spikes. Code: [apps/api/src/services/eventIngestion.service.ts](apps/api/src/services/eventIngestion.service.ts)
+In-memory buffering: Events collect in memory before database writes. Dual-trigger flushing (time-based + size-based). Prevents database overload during spikes.
 
-Batch database writes: Bulk inserts with MongoDB `insertMany()`. Up to 2,000 events per batch. Ordered inserts, duplicate handling. Code: [apps/api/src/repositories/event.repository.ts](apps/api/src/repositories/event.repository.ts)
+Batch database writes: Bulk inserts with MongoDB `insertMany()`. Up to 2,000 events per batch. Ordered inserts, duplicate handling.
 
-Write-optimized schema: Append-only event storage. No updates. Compound index on `(userId, occurredAt)` for reads. Using `eventId` as `_id` saves 12 bytes per document. Code: [apps/api/src/models/Event.ts](apps/api/src/models/Event.ts)
+Write-optimized schema: Append-only event storage. No updates. Compound index on `(userId, occurredAt)` for reads. Using `eventId` as `_id` saves 12 bytes per document.
 
 ### Infrastructure
 
-Long-running service: EC2 with PM2 process manager. Auto-restart on crashes. Cluster mode ready for multi-core. Code: [infra/cloudformation.yaml](infra/cloudformation.yaml)
+Long-running service: EC2 with PM2 process manager. Auto-restart on crashes. Cluster mode ready for multi-core.
 
 Horizontal scalability: Stateless API. No in-memory session storage. Load balancer support ready. MongoDB connection pooling (10 connections). Each instance handles independent traffic.
 
-Monitoring: Real-time Prometheus metrics. CloudWatch + Grafana dashboards. Buffer size and flush rate tracking. Code: [apps/api/src/observability/](apps/api/src/observability/)
+Monitoring: Real-time Prometheus metrics. CloudWatch + Grafana dashboards. Buffer size and flush rate tracking.
 
 ### Load Testing
 
 k6 load test results:
+
 - 300,000 events in 30 seconds (~10,000 events/sec)
 - p95 latency: <50ms
 - Failure rate: 0%
 - 5x target: 5M events/day = ~58 events/sec (173x headroom)
 
 Test config:
+
 ```javascript
 // Sustained high load
 export const options = {
   stages: [
-    { duration: '10s', target: 100 },  // Ramp up
-    { duration: '30s', target: 500 },  // Sustained load
-    { duration: '10s', target: 0 },    // Ramp down
+    { duration: "10s", target: 100 }, // Ramp up
+    { duration: "30s", target: 500 }, // Sustained load
+    { duration: "10s", target: 0 }, // Ramp down
   ],
 };
 ```
 
 ### Capacity
 
-| Metric | Current Load | 5x Load | System Capacity | Status |
-|--------|--------------|---------|-----------------|--------|
-| Daily Events | 1M | 5M | 864M (theoretical) | Ready |
-| Events/Second | ~12 | ~58 | ~10,000 | Ready |
-| Buffer Flushes | ~6/sec | ~29/sec | 5 flushes/sec × 2000 events | Ready |
-| Database Writes | Batch | Batch | Bulk inserts | Ready |
+| Metric          | Current Load | 5x Load | Tested Capacity             | Status |
+| --------------- | ------------ | ------- | --------------------------- | ------ |
+| Daily Events    | 1M           | 5M      | 300K in 30s (load tested)   | Ready  |
+| Events/Second   | ~12          | ~58     | ~10,000                     | Ready  |
+| Buffer Flushes  | ~6/sec       | ~29/sec | 5 flushes/sec × 2000 events | Ready  |
+| Database Writes | Batch        | Batch   | Bulk inserts                | Ready  |
 
 ### Event Type Expansion
 
@@ -372,11 +400,12 @@ Scalability: Update the enum in `packages/types/src/event.types.ts`
 Benefits: Type-safe across entire system, automatic backend validation, frontend autocomplete updates, no database schema changes, scales to 100+ event types.
 
 Example:
+
 ```typescript
 export enum EventType {
   // Existing 10 types...
-  CHECKOUT_START = 'checkout_start',
-  PAYMENT_METHOD_SELECTED = 'payment_method_selected',
+  CHECKOUT_START = "checkout_start",
+  PAYMENT_METHOD_SELECTED = "payment_method_selected",
   // ... add more
 }
 ```
@@ -388,23 +417,27 @@ Prerequisites: Node.js 20+, pnpm 10.25.0+, MongoDB (local or Atlas), AWS Account
 ### Local Development
 
 Clone:
+
 ```bash
 git clone <repository-url>
 cd martech
 ```
 
 Install:
+
 ```bash
 pnpm install
 ```
 
 Configure:
+
 ```bash
 cp .env.example .env
 # Edit .env with MongoDB URI and settings
 ```
 
 Start:
+
 ```bash
 # All services
 pnpm dev
@@ -415,10 +448,10 @@ cd apps/web && pnpm dev    # Frontend on http://localhost:5173
 ```
 
 Access:
+
 - Frontend: http://localhost:5173
 - API: http://localhost:3000
 - API Docs: http://localhost:3000/api-docs
-- Prometheus: http://localhost:9464/metrics
 - Health: http://localhost:3000/health
 
 ### Tests
@@ -449,4 +482,4 @@ Follow the code style in [CLAUDE.md](CLAUDE.md). Write tests for new features. U
 
 ## License
 
-ISC
+MIT
