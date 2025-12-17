@@ -1,4 +1,4 @@
-# MarTech Event Analytics Platform
+# Veritas - MarTech Event Analytics Platform
 
 Event tracking and analytics for online shopping platforms. Handles 1M+ daily events across 500K+ users.
 
@@ -8,6 +8,7 @@ Reference implementation for scalable event ingestion and analytics systems.
 
 - [What It Does](#what-it-does)
 - [Architecture](#architecture)
+- [Level Coverage](#level-coverage)
 - [Event Flow](#event-flow)
 - [What's Built](#whats-built)
 - [Stack](#stack)
@@ -55,7 +56,7 @@ Current load is 12 events/sec. Built to handle 10,000. That's 833x headroom.
 
 Based on the implementation described in **What’s Built**:
 
-- Database: L2 (MongoDB Atlas schema + implementation)
+- Database: L2 (Self hosted MongoDB schema + implementation)
 - Backend/API: L5 (Deployed API, tests, daily export job)
 - Cloud/DevOps: L4 (AWS infra, CloudFormation, CI/CD)
 - Frontend: L4 (React app with forms & API integration)
@@ -111,7 +112,7 @@ Events hit the API and return 202 immediately. Buffer flushes every 200ms or whe
 Database (L2):
 
 - Mongoose schema with compound indexes
-- MongoDB Atlas M0 Free Tier, connection pooling
+- Self hosted MongoDB, connection pooling
 - No external integrations
 
 Backend/API (L5):
@@ -145,11 +146,11 @@ Dashboards (L4):
 
 ## Stack
 
-Backend: Node.js 20, Express.js 5, TypeScript 5.9.3, MongoDB Atlas (Mongoose 9), Better Auth 1.4.7, custom TypeScript validators, Vitest, OpenTelemetry + Winston, PM2
+Backend: Node.js 20, Express.js 5, TypeScript 5.9.3, MongoDB (Mongoose 9), Better Auth 1.4.7, custom TypeScript validators, Vitest, OpenTelemetry + Winston, PM2
 
 Frontend: React 19.2.0, Vite 7.2.4, TypeScript 5.9.3, Tailwind CSS v4.1.18, shadcn/ui, TanStack Query 5.90.12, React Router 7.10.1, Recharts 3.6.0, Zod
 
-Infrastructure: AWS EC2 t3.micro (Free Tier), S3 + CloudFront, MongoDB Atlas M0 (Free Tier), CloudFormation, GitHub Actions, Nginx, Let's Encrypt SSL/TLS, CloudWatch + Grafana
+Infrastructure: AWS EC2 t3.micro (Free Tier), S3 + CloudFront, Self hosted MongoDB, CloudFormation, GitHub Actions, Nginx, Let's Encrypt SSL/TLS, CloudWatch + Grafana
 
 Monorepo: pnpm workspaces. Fast, disk-efficient. 3x faster than npm, 2x faster than Yarn. Shared dependencies installed once at root. Parallel builds with `pnpm -r build`.
 
@@ -157,9 +158,10 @@ Monorepo: pnpm workspaces. Fast, disk-efficient. 3x faster than npm, 2x faster t
 
 Production:
 
-- Frontend: https://www.veritas.mrsamdev.xyz
+- Frontend: https://martech.mrsamdev.xyz
 - Backend: https://api-veritas.mrsamdev.xyz
 - API Docs: https://api-veritas.mrsamdev.xyz/api-docs
+- Grafana: http://my-support-services-grafana-d8870c-194-238-23-211.traefik.me/d/tmsOtSxZk/amazon-ec2?orgId=1
 
 Deploy to AWS:
 
@@ -392,7 +394,7 @@ Target latency: <100ms p99
 
 ## Cost
 
-Runs on AWS and MongoDB free tiers. EC2 t3.micro (750 hours/month), S3 + CloudFront (minimal usage), MongoDB Atlas M0, CloudWatch (basic monitoring).
+Runs on AWS and MongoDB free tiers. EC2 t3.micro (750 hours/month), S3 + CloudFront (minimal usage), Selfhosted MongoDB (minimal usage), CloudWatch (basic monitoring).
 
 Current cost: $0/month.
 
