@@ -73,7 +73,9 @@ export class EventRepository {
       });
 
       // Success: all events inserted (or duplicates skipped)
-      console.log(`[EventRepository] Bulk inserted ${events.length} events`);
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[EventRepository] Bulk inserted ${events.length} events`);
+      }
 
     } catch (error: any) {
       // Handle duplicate key errors gracefully (E11000)
@@ -83,9 +85,11 @@ export class EventRepository {
         const insertedCount = error.result?.nInserted || 0;
         const duplicateCount = events.length - insertedCount;
 
-        console.log(
-          `[EventRepository] Bulk insert completed with ${duplicateCount} duplicates ignored, ${insertedCount} inserted`
-        );
+        if (process.env.NODE_ENV !== 'production') {
+          console.log(
+            `[EventRepository] Bulk insert completed with ${duplicateCount} duplicates ignored, ${insertedCount} inserted`
+          );
+        }
 
         // Don't throw - duplicates are expected (idempotency)
         return;

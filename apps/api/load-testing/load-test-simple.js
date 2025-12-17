@@ -17,18 +17,9 @@ const EVENT_TYPES = [
   'video_pause',
 ];
 
-function generateEventId() {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-}
-
 function generateEvent() {
   const eventType = EVENT_TYPES[Math.floor(Math.random() * EVENT_TYPES.length)];
   return {
-    eventId: generateEventId(),
     userId: `user_${Math.floor(Math.random() * 100000)}`,
     sessionId: `session_${Math.floor(Math.random() * 10000)}`,
     type: eventType,

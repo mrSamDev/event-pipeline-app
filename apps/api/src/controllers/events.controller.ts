@@ -57,7 +57,10 @@ export class EventsController {
       });
 
     } catch (error: any) {
-      console.error('[EventsController] ingestEvent error:', error);
+      // Minimal logging for high-throughput endpoint
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('[EventsController] ingestEvent error:', error);
+      }
 
       res.status(500).json({
         error: 'Internal Server Error',

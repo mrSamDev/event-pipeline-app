@@ -8,7 +8,7 @@ export class EventIngestionService {
   private readonly maxBufferSize = 2000;
   private readonly flushIntervalMs = 200;
   private readonly backpressureThreshold = 10000;
-  private readonly maxConcurrentFlushes = 3;
+  private readonly maxConcurrentFlushes = 5;
 
   constructor(private repository: EventRepository) {
     console.log('[EventIngestionService] Initialized with config:', {
@@ -26,12 +26,15 @@ export class EventIngestionService {
   async addEvent(event: NormalizedEvent): Promise<void> {
     this.buffer.push(event);
 
-    if (this.buffer.length % 500 === 0) {
+    // Reduce logging frequency for better performance
+    if (this.buffer.length % 2000 === 0 && process.env.NODE_ENV !== 'production') {
       console.log('[EventIngestionService] Buffer size:', this.buffer.length);
     }
 
     if (this.buffer.length >= this.maxBufferSize && this.activeFlushes < this.maxConcurrentFlushes) {
-      console.log('[EventIngestionService] Size threshold reached, triggering flush');
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[EventIngestionService] Size threshold reached, triggering flush');
+      }
       this.flush().catch((error) => {
         console.error('[EventIngestionService] Background flush failed:', error);
       });
@@ -46,7 +49,9 @@ export class EventIngestionService {
     }
 
     if (this.activeFlushes >= this.maxConcurrentFlushes) {
-      console.log('[EventIngestionService] Max concurrent flushes reached, skipping');
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[EventIngestionService] Max concurrent flushes reached, skipping');
+      }
       return;
     }
 
@@ -60,12 +65,14 @@ export class EventIngestionService {
 
       const flushDuration = Date.now() - flushStartTime;
 
-      console.log('[EventIngestionService] Flush successful:', {
-        batchSize: batch.length,
-        durationMs: flushDuration,
-        remainingInBuffer: this.buffer.length,
-        activeFlushes: this.activeFlushes,
-      });
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[EventIngestionService] Flush successful:', {
+          batchSize: batch.length,
+          durationMs: flushDuration,
+          remainingInBuffer: this.buffer.length,
+          activeFlushes: this.activeFlushes,
+        });
+      }
 
     } catch (error: any) {
       console.error('[EventIngestionService] Flush failed, re-queuing batch:', {
@@ -88,7 +95,9 @@ export class EventIngestionService {
 
     this.flushTimer = setTimeout(() => {
       if (this.buffer.length > 0 && this.activeFlushes < this.maxConcurrentFlushes) {
-        console.log('[EventIngestionService] Timer expired, triggering flush');
+        if (process.env.NODE_ENV !== 'production') {
+          console.log('[EventIngestionService] Timer expired, triggering flush');
+        }
         this.flush().catch((error) => {
           console.error('[EventIngestionService] Timer-triggered flush failed:', error);
         });

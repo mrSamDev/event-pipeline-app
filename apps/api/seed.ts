@@ -1,9 +1,9 @@
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import { getAuth } from "./src/auth";
-
+import path from "path";
 // Load environment variables
-dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
 const mongoUri = process.env.MONGODB_URI;
 if (!mongoUri) {

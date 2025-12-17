@@ -46,8 +46,22 @@ function initializeApp(): void {
   );
 
   app.use(express.json({ limit: "10mb" }));
-  app.use(observabilityMiddleware);
-  app.use(sessionMiddleware);
+
+  // Apply observability and session middleware to all routes EXCEPT /events
+  // This optimizes the high-throughput event ingestion endpoint
+  app.use((req, res, next) => {
+    if (req.path === "/events" && req.method === "POST") {
+      return next();
+    }
+    observabilityMiddleware(req, res, next);
+  });
+
+  app.use((req, res, next) => {
+    if (req.path === "/events" && req.method === "POST") {
+      return next();
+    }
+    sessionMiddleware(req, res, next);
+  });
 
   app.use(
     "/api-docs",

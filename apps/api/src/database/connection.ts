@@ -9,8 +9,8 @@ export async function connectDatabase(mongoUri: string): Promise<void> {
 
   try {
     await mongoose.connect(mongoUri, {
-      maxPoolSize: 10,
-      minPoolSize: 2,
+      maxPoolSize: 50,
+      minPoolSize: 10,
       serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 45000,
       retryWrites: true,
