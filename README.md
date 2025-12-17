@@ -51,6 +51,17 @@ The system buffers events in memory before writing to MongoDB in batches. This k
 
 Current load is 12 events/sec. Built to handle 10,000. That's 833x headroom.
 
+## Level Coverage
+
+Based on the implementation described in **What’s Built**:
+
+- Database: L2 (MongoDB Atlas schema + implementation)
+- Backend/API: L5 (Deployed API, tests, daily export job)
+- Cloud/DevOps: L4 (AWS infra, CloudFormation, CI/CD)
+- Frontend: L4 (React app with forms & API integration)
+- Dashboards: L3 (Grafana + CloudWatch)
+- Challenge Covered: Increased daily events (5x)
+
 ## Architecture
 
 ```
@@ -570,10 +581,6 @@ pnpm --filter web build
 ## Security
 
 SSL/TLS encryption for all endpoints. Better Auth with secure session cookies. MongoDB connection with TLS. IAM roles for AWS resources. CORS configured for allowed origins. Environment variables with NoEcho in CloudFormation. Custom TypeScript validators for runtime type safety.
-
-## Contributing
-
-Follow the code style in [CLAUDE.md](CLAUDE.md). Write tests for new features. Update docs for API changes. Run `pnpm test` before committing. Keep files under 200 lines. Use pure functions where possible.
 
 ## License
 
