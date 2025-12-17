@@ -1,30 +1,16 @@
 # MarTech Event Analytics Platform
 
-A production-ready event tracking and analytics system for online shopping platforms. Built to handle 1M+ daily events across 500K+ users with comprehensive observability and scalable infrastructure.
+Event tracking and analytics for online shopping platforms. Handles 1M+ daily events across 500K+ users. Built for production.
 
-## Overview
+## What It Does
 
-This MarTech platform provides real-time event ingestion, user journey tracking, and analytics dashboards. The system is designed for high performance (10,000 events/sec capacity) with full Infrastructure as Code deployment on AWS.
+Ingests events in real time, tracks user activity, shows analytics dashboards. Designed for 10,000 events/sec. Deployed with Infrastructure as Code on AWS.
 
-### Key Features
+The system buffers events in memory before writing to MongoDB in batches. This keeps the database from choking during traffic spikes. Events never get updated once written, only read.
 
-- High-performance event ingestion with buffer-based batching
-- User journey tracking with flexible event types
-- Real-time analytics dashboards with KPIs and visualizations
-- Production-grade authentication and session management
-- End-to-end type safety with TypeScript
-- Full observability with OpenTelemetry, Prometheus, and CloudWatch
-- Automated deployment with CloudFormation and GitHub Actions
-
-### Scale Capability
-
-- **Current Target**: 1M events/day (~12 events/sec)
-- **Designed Capacity**: 10M+ events/day (~116 events/sec)
-- **Headroom**: 833x current load with buffer system
+Current load is 12 events/sec. Built to handle 10,000. That's 833x headroom.
 
 ## Architecture
-
-### System Components
 
 ```
 ┌─────────────────┐
@@ -58,7 +44,7 @@ This MarTech platform provides real-time event ingestion, user journey tracking,
 └─────────────────┘
 ```
 
-### Event Pipeline
+## Event Flow
 
 ```
 POST /events (202) → Normalize → In-Memory Buffer → Batch Flush (200ms/2000 events) → MongoDB
@@ -66,250 +52,117 @@ POST /events (202) → Normalize → In-Memory Buffer → Batch Flush (200ms/200
                                  Prometheus Metrics
 ```
 
-## Level Completion Summary
+Events hit the API and return 202 immediately. Buffer flushes every 200ms or when it hits 2,000 events, whichever comes first. If the buffer reaches 10,000 events, new requests get rejected until it drains.
 
-### Database: L2 (67% Complete)
+## What's Built
 
-- **L1**: DB Schema ✅ - Mongoose schema with optimized indexes
-- **L2**: Cloud DB ✅ - MongoDB Atlas M0 Free Tier with connection pooling
-- **L3**: External Integration ❌ - Not implemented
+Database (L2, 67%):
+- Mongoose schema with compound indexes
+- MongoDB Atlas M0 Free Tier, connection pooling
+- No external integrations
 
-### Backend/API: L5 (100% Complete)
+Backend/API (L5, 100%):
+- OpenAPI 3.0 spec, Swagger UI
+- Express.js, layered architecture
+- AWS EC2, Nginx, SSL/TLS
+- Vitest, 5 test files
+- Daily export job, S3 at 10 UTC
 
-- **L1**: API Documentation ✅ - OpenAPI 3.0 spec with Swagger UI
-- **L2**: Full Implementation ✅ - Express.js with layered architecture
-- **L3**: Cloud Deployment ✅ - AWS EC2 with Nginx and SSL/TLS
-- **L4**: Unit Testing ✅ - Vitest with 5 test files
-- **L5**: Daily Export Job ✅ - Cron scheduler exporting to S3 at 10 UTC
+Cloud/DevOps (L4, 100%):
+- Architecture diagrams
+- Full AWS deployment running
+- GitHub Actions for frontend
+- CloudFormation with Makefile
 
-### Cloud/DevOps: L4 (100% Complete)
+Frontend (L4, 83%):
+- User stories, wireframes
+- React 19, Tailwind CSS v4
+- Data viz with Recharts
+- Auth forms, Zod validation
+- S3 + CloudFront
+- No admin panel
 
-- **L1**: System Diagrams ✅ - Architecture documented in detail
-- **L2**: Cloud Infrastructure ✅ - Full AWS deployment running
-- **L3**: CI/CD Pipeline ✅ - GitHub Actions for frontend deployment
-- **L4**: Infrastructure as Code ✅ - CloudFormation with Makefile
+Dashboards (L4, 100%):
+- OpenTelemetry + Prometheus + CloudWatch
+- KPIs and charts with Recharts
 
-### Frontend: L4 (83% Complete)
+Overall: 90% (18/20 levels)
 
-- **L1**: Wireframes ✅ - User stories and architecture documented
-- **L2**: Prototype ✅ - React 19 with Tailwind CSS v4
-- **L3**: Connected App ✅ - Data visualization with Recharts
-- **L4**: Data Entry Forms ✅ - Authentication forms with Zod validation
-- **L5**: Cloud Hosted ✅ - S3 + CloudFront deployment
-- **L6**: Admin Panel ❌ - Not implemented
+## Stack
 
-### Dashboards: L4 (100% Complete)
+Backend: Node.js 20, Express.js 5, TypeScript 5.9.3, MongoDB Atlas (Mongoose 9), Better Auth 1.4.7, custom TypeScript validators, Vitest, OpenTelemetry + Prometheus + Winston, PM2
 
-- **L3**: Service Monitoring ✅ - OpenTelemetry + Prometheus + CloudWatch
-- **L4**: Analytics Dashboard ✅ - KPIs and charts with Recharts
+Frontend: React 19.2.0, Vite 7.2.4, TypeScript 5.9.3, Tailwind CSS v4.1.18, shadcn/ui, TanStack Query 5.90.12, React Router 7.10.1, Recharts 3.6.0, Zod
 
-### Overall Grade: 90% (18/20 levels completed)
+Infrastructure: AWS EC2 t3.micro (Free Tier), S3 + CloudFront, MongoDB Atlas M0 (Free Tier), CloudFormation, GitHub Actions, Nginx, Let's Encrypt SSL/TLS, CloudWatch + Grafana
 
-## Technology Stack
-
-### Backend
-- Node.js 20 with pnpm workspaces
-- Express.js 5
-- TypeScript 5.9.3
-- MongoDB Atlas (Mongoose 9)
-- Better Auth 1.4.7
-- Custom TypeScript validators (type-safe runtime validation)
-- Vitest testing
-- OpenTelemetry + Prometheus + Winston
-- PM2 process manager
-
-### Frontend
-- React 19.2.0
-- Vite 7.2.4
-- TypeScript 5.9.3
-- Tailwind CSS v4.1.18
-- shadcn/ui components
-- TanStack Query 5.90.12
-- React Router 7.10.1
-- Recharts 3.6.0
-- Zod validation
-
-### Infrastructure
-- AWS EC2 t3.micro (Free Tier)
-- S3 + CloudFront CDN
-- MongoDB Atlas M0 (Free Tier)
-- CloudFormation IaC
-- GitHub Actions CI/CD
-- Nginx web server
-- Let's Encrypt SSL/TLS
-- CloudWatch + Grafana monitoring
-
-### Monorepo
-- **pnpm workspaces** - Fast, disk-efficient package manager
-- Shared dependency management across packages
-- Parallel command execution with `pnpm -r`
-- Workspace protocol for internal packages
-
-## Quick Start
-
-### Prerequisites
-
-- Node.js 20+
-- pnpm 10.25.0+
-- MongoDB (local or Atlas)
-- AWS Account (for deployment)
-
-### Local Development
-
-1. Clone the repository:
-```bash
-git clone <repository-url>
-cd martech
-```
-
-2. Install dependencies:
-```bash
-pnpm install
-```
-
-3. Configure environment:
-```bash
-cp .env.example .env
-# Edit .env with your MongoDB URI and other settings
-```
-
-4. Start development servers:
-```bash
-# Start all services (frontend + backend)
-pnpm dev
-
-# Or start individually
-cd apps/api && pnpm dev    # Backend on http://localhost:3000
-cd apps/web && pnpm dev    # Frontend on http://localhost:5173
-```
-
-5. Access the application:
-- Frontend: http://localhost:5173
-- API: http://localhost:3000
-- API Docs: http://localhost:3000/api-docs
-- Prometheus Metrics: http://localhost:9464/metrics
-- Health Check: http://localhost:3000/health
-
-### Running Tests
-
-```bash
-# Run all tests
-pnpm test
-
-# Run tests in watch mode
-pnpm --filter api test:watch
-
-# Run with coverage
-pnpm --filter api test:coverage
-
-# Run with UI
-pnpm --filter api test:ui
-```
-
-### Building for Production
-
-```bash
-# Build all packages
-pnpm build
-
-# Build specific package
-pnpm --filter @martech/types build
-pnpm --filter api build
-pnpm --filter web build
-```
+Monorepo: pnpm workspaces. Fast, disk-efficient. 3x faster than npm, 2x faster than Yarn. Shared dependencies installed once at root. Parallel builds with `pnpm -r build`.
 
 ## Deployment
 
-### Production URLs
+Production:
+- Frontend: https://www.veritas.mrsamdev.xyz
+- Backend: https://api-veritas.mrsamdev.xyz
+- API Docs: https://api-veritas.mrsamdev.xyz/api-docs
 
-- **Frontend**: https://www.veritas.mrsamdev.xyz
-- **Backend API**: https://api-veritas.mrsamdev.xyz
-- **API Documentation**: https://api-veritas.mrsamdev.xyz/api-docs
+Deploy to AWS:
 
-### Deploy to AWS
-
-1. Configure AWS credentials:
 ```bash
 aws configure
-```
-
-2. Create production environment file:
-```bash
 cp .env.example .env.production
-# Edit .env.production with production values
-```
-
-3. Deploy infrastructure:
-```bash
+# Edit .env.production with real values
 make deploy
-```
-
-4. View stack outputs:
-```bash
 make status
 make outputs
 ```
 
-5. Deploy frontend:
+Deploy frontend with git tags:
+
 ```bash
-# Tag-based deployment
 git tag v1.0.0
 git push origin v1.0.0
-# GitHub Actions will automatically deploy
+# GitHub Actions handles the rest
 ```
 
-### Infrastructure Management
+Infrastructure commands:
 
 ```bash
-make deploy          # Deploy/update CloudFormation stack
-make delete          # Delete stack (with confirmation)
+make deploy          # Deploy/update stack
+make delete          # Delete stack (asks first)
 make status          # Check stack status
-make describe        # Describe stack resources
-make validate        # Validate CloudFormation template
-make events          # View stack events
+make describe        # Stack resources
+make validate        # Validate template
+make events          # Stack events
 ```
 
-## API Endpoints
+## API
 
-### Authentication
-- `POST /api/auth/sign-up/email` - Register new user
-- `POST /api/auth/sign-in/email` - User login
+Authentication:
+- `POST /api/auth/sign-up/email` - Register
+- `POST /api/auth/sign-in/email` - Login
 - `POST /api/auth/sign-out` - Logout
-- `GET /api/auth/get-session` - Get current session
+- `GET /api/auth/get-session` - Current session
 
-### Events
-- `POST /events` - Ingest events (public, returns 202 Accepted)
-- `GET /users/:userId/journey` - Get user journey (protected)
+Events:
+- `POST /events` - Ingest events (public, 202 Accepted)
+- `GET /users/:userId/journey` - User journey (protected)
 
-### Analytics
-- `GET /stats` - System statistics and KPIs (protected)
-- `GET /users` - List all users (protected)
+Analytics:
+- `GET /stats` - System stats and KPIs (protected)
+- `GET /users` - List users (protected)
 
-### Health
-- `GET /health` - Health check with database status
+Health:
+- `GET /health` - Health check, database status
 
-Full API documentation available at `/api-docs` with "Try it out" feature.
+Full docs at `/api-docs`. Try requests directly in the browser.
 
-## Event Types Supported
+## Event Types
 
-The system supports 10 event types:
+10 supported event types: `session_start`, `page_view`, `search`, `purchase`, `add_to_cart`, `remove_from_cart`, `button_click`, `form_submit`, `video_play`, `video_pause`.
 
-- `session_start` - User session begins
-- `page_view` - Page navigation
-- `search` - Search query performed
-- `purchase` - Transaction completed
-- `add_to_cart` - Item added to cart
-- `remove_from_cart` - Item removed from cart
-- `button_click` - Button interaction
-- `form_submit` - Form submission
-- `video_play` - Video playback started
-- `video_pause` - Video playback paused
+Adding new types takes three steps:
 
-### Adding New Event Types
-
-Adding new event types is straightforward and type-safe:
-
-1. Add to the enum in `packages/types/src/event.types.ts`:
+1. Update the enum in `packages/types/src/event.types.ts`:
 ```typescript
 export enum EventType {
   // ... existing types
@@ -318,154 +171,106 @@ export enum EventType {
 }
 ```
 
-2. Rebuild the types package:
+2. Rebuild types:
 ```bash
 pnpm --filter @martech/types build
 ```
 
-3. The new types are automatically available across the entire system:
-   - Backend validators enforce the new types
-   - Frontend TypeScript autocomplete includes them
-   - API documentation updates automatically
-   - Database accepts the new event types
+3. Done. Backend validators enforce it, frontend autocomplete knows about it, API docs update, database accepts it.
 
-This design supports scaling to 100+ event types without refactoring.
+Scales to 100+ event types without refactoring.
 
 ## Design Patterns
 
-### Event Ingestion Pattern
+### Event Ingestion
 
-**Buffer-Based Batching**: Events are collected in an in-memory buffer and flushed to MongoDB in batches using dual triggers:
-- Time-based: Every 200ms
-- Size-based: When buffer reaches 2,000 events
+Buffer-based batching. Events collect in memory, flush to MongoDB in batches. Two triggers: 200ms timer or 2,000 events.
 
-This pattern provides:
-- High throughput (10,000 events/sec capacity)
-- Reduced database load (batch inserts)
-- Backpressure handling (rejects at 10,000 events)
-- Monitoring via Prometheus metrics
+Gets you 10,000 events/sec capacity, reduced database load, backpressure handling when the buffer hits 10,000. Prometheus tracks it all.
+
+Code: [apps/api/src/services/eventIngestion.service.ts](apps/api/src/services/eventIngestion.service.ts)
 
 ### Repository Pattern
 
-**Separation of Concerns**: Database access is isolated in repository layer:
+Database access isolated in the repository layer:
+
 ```
 Controller → Service → Repository → MongoDB
 ```
 
-Benefits:
-- Testable business logic (no database mocking needed)
-- Easy to swap data sources
-- Clear separation of HTTP, business logic, and data access
+Testable business logic without mocking the database. Easy to swap data sources. HTTP stays separate from business logic, business logic stays separate from data access.
 
-### Schema-First API Design
+### Schema-First API
 
-**Type Safety Throughout**: Shared types package ensures consistency:
+Shared types package keeps everything consistent:
+
 ```
 Backend: Custom TS Validators → Shared Types Package → Frontend: Zod Validation
 ```
 
-The backend uses lightweight TypeScript validation functions that check types and values at runtime without external dependencies. The frontend uses Zod for form validation and API response parsing. Both share the same TypeScript types from `@martech/types` package.
+Backend uses lightweight TypeScript validation. Runtime checks, no external dependencies. Frontend uses Zod for forms and API responses. Both share types from `@martech/types`.
 
-### Monorepo Architecture with pnpm Workspaces
+### Monorepo with pnpm Workspaces
 
-This project uses **pnpm workspaces** for managing multiple packages in a single repository:
-
-**Why pnpm?**
-- 3x faster than npm, 2x faster than Yarn
-- Saves disk space with content-addressable storage (single copy of each package version)
-- Strict dependency resolution (prevents phantom dependencies)
-- Built-in workspace support
-
-**Workspace Structure**:
 ```
 martech/
-├── pnpm-workspace.yaml       # Defines workspace packages
+├── pnpm-workspace.yaml       # Workspace config
 ├── apps/
-│   ├── api/                  # Backend package
-│   └── web/                  # Frontend package
+│   ├── api/                  # Backend
+│   └── web/                  # Frontend
 └── packages/
-    └── types/                # Shared types package
+    └── types/                # Shared types
 ```
 
-**Benefits**:
-- Shared dependencies installed once at root
-- Type safety across packages with `@martech/types`
-- Parallel builds: `pnpm -r build`
-- Run commands across workspaces: `pnpm -r --parallel dev`
-- Filter specific packages: `pnpm --filter api test`
+Why pnpm? Saves disk space with content-addressable storage. One copy of each package version, ever. Strict dependency resolution prevents phantom dependencies. Built-in workspace support.
 
-## Monitoring and Observability
+Commands:
+- `pnpm -r build` - Parallel builds
+- `pnpm -r --parallel dev` - Run all services
+- `pnpm --filter api test` - Filter specific packages
 
-### Metrics Collected
+## Monitoring
 
-**Event Ingestion**:
-- `martech_events_ingested_total` - Total events by type and status
-- `martech_event_ingestion_duration_seconds` - Latency histogram
-- `martech_buffer_size` - Real-time buffer size
-- `martech_buffer_flushes_total` - Flush operations counter
+Metrics collected:
 
-**Database**:
-- Connection pool status
-- Query duration (p50, p95, p99)
-- Operation counts
+Event Ingestion: total events by type and status, latency histogram, real-time buffer size, flush operations counter
 
-**HTTP**:
-- Request counts by route and method
-- Response times
-- Error rates
+Database: connection pool status, query duration (p50, p95, p99), operation counts
 
-**System**:
-- Memory usage (heap, RSS, external)
-- CPU usage
-- Garbage collection metrics
+HTTP: request counts by route and method, response times, error rates
 
-### Accessing Metrics
+System: memory usage (heap, RSS, external), CPU usage, GC metrics
 
-- **Prometheus**: http://localhost:9464/metrics (local) or https://api-veritas.mrsamdev.xyz:9464/metrics (production)
-- **CloudWatch**: Logs and metrics in AWS Console
-- **Grafana Dashboard**: [Production Monitoring Dashboard](http://my-support-services-grafana-d8870c-194-238-23-211.traefik.me/d/tmsOtSxZk/amazon-ec2?orgId=1)
+Access metrics:
+- Prometheus: http://localhost:9464/metrics (local), https://api-veritas.mrsamdev.xyz:9464/metrics (production)
+- CloudWatch: AWS Console
+- Grafana: [Production Dashboard](http://my-support-services-grafana-d8870c-194-238-23-211.traefik.me/d/tmsOtSxZk/amazon-ec2?orgId=1)
 
-### CloudWatch + Grafana Integration
+CloudWatch + Grafana setup:
 
-The system uses CloudWatch as the metrics backend with Grafana for visualization:
-
-**Architecture**:
 ```
 EC2 Instance → CloudWatch Agent → CloudWatch → Grafana Data Source
      ↓
-Prometheus Metrics :9464 → Grafana Data Source
+Prometheus :9464 → Grafana Data Source
 ```
 
-**CloudWatch Metrics Collected**:
-- System metrics: CPU, memory, disk usage
-- Application logs: PM2 logs, Nginx logs
-- Custom namespaces: MartechAPI metrics
+CloudWatch collects system metrics (CPU, memory, disk), application logs (PM2, Nginx), custom namespaces (MartechAPI). Grafana shows real-time dashboards for EC2 health, custom panels for event ingestion, alerts for threshold breaches.
 
-**Grafana Setup**:
-- Connected to both CloudWatch and Prometheus
-- Real-time dashboards for EC2 instance health
-- Custom panels for event ingestion metrics
-- Alerting configured for threshold breaches
+## Performance
 
-## Performance Characteristics
+Buffer size: 2,000 events
+Flush interval: 200ms
+Backpressure threshold: 10,000 events
+Max concurrent flushes: 3
+Database indexes: Compound index on userId + occurredAt
+Connection pool: 10 connections
+Target latency: <100ms p99
 
-- **Buffer Size**: 2,000 events
-- **Flush Interval**: 200ms
-- **Backpressure Threshold**: 10,000 events
-- **Max Concurrent Flushes**: 3
-- **Database Indexes**: Compound index on userId + occurredAt
-- **Connection Pool**: 10 connections
-- **Target Latency**: <100ms p99
+## Cost
 
-## Cost Analysis
+Runs on AWS and MongoDB free tiers. EC2 t3.micro (750 hours/month), S3 + CloudFront (minimal usage), MongoDB Atlas M0, CloudWatch (basic monitoring).
 
-The system runs entirely on AWS and MongoDB free tiers:
-
-- EC2 t3.micro: Free Tier (750 hours/month)
-- S3 + CloudFront: Free Tier (minimal usage)
-- MongoDB Atlas M0: Free Tier
-- CloudWatch: Free Tier (basic monitoring)
-- **Current Cost: $0/month**
+Current cost: $0/month.
 
 ## Project Structure
 
@@ -480,7 +285,7 @@ martech/
 │   │   │   ├── models/        # Mongoose schemas
 │   │   │   ├── middleware/    # Express middleware
 │   │   │   ├── validators/    # Zod schemas
-│   │   │   ├── observability/ # Telemetry setup
+│   │   │   ├── observability/ # Telemetry
 │   │   │   └── jobs/          # Scheduled jobs
 │   │   └── tests/
 │   │
@@ -500,69 +305,45 @@ martech/
 │   └── cloudwatch-config.json # Monitoring config
 │
 ├── .github/
-│   └── workflows/        # CI/CD pipelines
+│   └── workflows/        # CI/CD
 │
 ├── Makefile              # Infrastructure commands
 └── pnpm-workspace.yaml   # Monorepo config
 ```
 
-## Challenge Addressed: Increased Number of Daily Events by 5 Times
+## Challenge: 5x Daily Events
 
-**Selected Challenge**: "Increased number of daily events by 5 times"
+Selected challenge: "Increased number of daily events by 5 times"
 
-**Justification**: The system was designed and validated to support a 5× increase in daily event volume (1M → 5M events/day) through a buffered ingestion pipeline, batch database writes, and an append-only event model. Load testing demonstrates sustained throughput far exceeding the projected increase.
+The system handles a 5x increase in daily event volume (1M to 5M events/day) through buffered ingestion, batch database writes, append-only event storage. Load testing proves it works.
 
-### Design Evidence
+### Design
 
-**1. In-Memory Buffering**
-- Events collected in memory before database writes
-- Dual-trigger flushing (time-based + size-based)
-- Prevents database overload during traffic spikes
-- Location: [apps/api/src/services/eventIngestion.service.ts](apps/api/src/services/eventIngestion.service.ts)
+In-memory buffering: Events collect in memory before database writes. Dual-trigger flushing (time-based + size-based). Prevents database overload during spikes. Code: [apps/api/src/services/eventIngestion.service.ts](apps/api/src/services/eventIngestion.service.ts)
 
-**2. Batch Database Writes**
-- Bulk inserts using MongoDB `insertMany()`
-- Up to 2,000 events per batch
-- Ordered inserts with duplicate handling
-- Location: [apps/api/src/repositories/event.repository.ts](apps/api/src/repositories/event.repository.ts)
+Batch database writes: Bulk inserts with MongoDB `insertMany()`. Up to 2,000 events per batch. Ordered inserts, duplicate handling. Code: [apps/api/src/repositories/event.repository.ts](apps/api/src/repositories/event.repository.ts)
 
-**3. Write-Optimized Schema**
-- Append-only event storage (no updates)
-- Compound index on `(userId, occurredAt)` for read queries
-- Using `eventId` as `_id` saves 12 bytes per document
-- Location: [apps/api/src/models/Event.ts](apps/api/src/models/Event.ts)
+Write-optimized schema: Append-only event storage. No updates. Compound index on `(userId, occurredAt)` for reads. Using `eventId` as `_id` saves 12 bytes per document. Code: [apps/api/src/models/Event.ts](apps/api/src/models/Event.ts)
 
-### Infrastructure Evidence
+### Infrastructure
 
-**1. Long-Running Service**
-- EC2 instance with PM2 process manager
-- Auto-restart on crashes
-- Cluster mode ready for multi-core scaling
-- Location: [infra/cloudformation.yaml](infra/cloudformation.yaml)
+Long-running service: EC2 with PM2 process manager. Auto-restart on crashes. Cluster mode ready for multi-core. Code: [infra/cloudformation.yaml](infra/cloudformation.yaml)
 
-**2. Horizontal Scalability**
-- Stateless API design (no in-memory session storage)
-- Load balancer support ready
-- MongoDB connection pooling (10 connections)
-- Each instance can handle independent traffic
+Horizontal scalability: Stateless API. No in-memory session storage. Load balancer support ready. MongoDB connection pooling (10 connections). Each instance handles independent traffic.
 
-**3. Monitoring**
-- Real-time metrics via Prometheus
-- CloudWatch + Grafana dashboards
-- Buffer size and flush rate tracking
-- Location: [apps/api/src/observability/](apps/api/src/observability/)
+Monitoring: Real-time Prometheus metrics. CloudWatch + Grafana dashboards. Buffer size and flush rate tracking. Code: [apps/api/src/observability/](apps/api/src/observability/)
 
-### Load Testing Validation
+### Load Testing
 
-**Test Results** (k6 load test):
-- **300,000 events in 30 seconds** (~10,000 events/sec)
-- **p95 latency**: <50ms
-- **Failure rate**: 0%
-- **5x target**: 5M events/day = ~58 events/sec (173x headroom)
+k6 load test results:
+- 300,000 events in 30 seconds (~10,000 events/sec)
+- p95 latency: <50ms
+- Failure rate: 0%
+- 5x target: 5M events/day = ~58 events/sec (173x headroom)
 
-**Test Configuration**:
+Test config:
 ```javascript
-// Target: Sustained high load
+// Sustained high load
 export const options = {
   stages: [
     { duration: '10s', target: 100 },  // Ramp up
@@ -572,57 +353,99 @@ export const options = {
 };
 ```
 
-### Capacity Breakdown
+### Capacity
 
 | Metric | Current Load | 5x Load | System Capacity | Status |
 |--------|--------------|---------|-----------------|--------|
-| Daily Events | 1M | 5M | 864M (theoretical) | ✅ Ready |
-| Events/Second | ~12 | ~58 | ~10,000 | ✅ Ready |
-| Buffer Flushes | ~6/sec | ~29/sec | 5 flushes/sec × 2000 events | ✅ Ready |
-| Database Writes | Batch | Batch | Bulk inserts | ✅ Ready |
+| Daily Events | 1M | 5M | 864M (theoretical) | Ready |
+| Events/Second | ~12 | ~58 | ~10,000 | Ready |
+| Buffer Flushes | ~6/sec | ~29/sec | 5 flushes/sec × 2000 events | Ready |
+| Database Writes | Batch | Batch | Bulk inserts | Ready |
 
-### Additional Scalability: Event Type Expansion
+### Event Type Expansion
 
-The system also handles **increased number of supported event types** through enum-based validation:
+Also handles increased number of supported event types through enum-based validation.
 
-**Current**: 10 event types
-**Scalability**: Add new types by updating the enum in `packages/types/src/event.types.ts`
+Current: 10 event types
+Scalability: Update the enum in `packages/types/src/event.types.ts`
 
-**Benefits**:
-- Type-safe across entire system
-- Automatic validation in backend
-- Frontend autocomplete updates
-- No database schema changes needed
-- Scales to 100+ event types
+Benefits: Type-safe across entire system, automatic backend validation, frontend autocomplete updates, no database schema changes, scales to 100+ event types.
 
-**Example**:
+Example:
 ```typescript
 export enum EventType {
   // Existing 10 types...
   CHECKOUT_START = 'checkout_start',
   PAYMENT_METHOD_SELECTED = 'payment_method_selected',
-  // ... add more as needed
+  // ... add more
 }
+```
+
+## Quick Start
+
+Prerequisites: Node.js 20+, pnpm 10.25.0+, MongoDB (local or Atlas), AWS Account (for deployment)
+
+### Local Development
+
+Clone:
+```bash
+git clone <repository-url>
+cd martech
+```
+
+Install:
+```bash
+pnpm install
+```
+
+Configure:
+```bash
+cp .env.example .env
+# Edit .env with MongoDB URI and settings
+```
+
+Start:
+```bash
+# All services
+pnpm dev
+
+# Or individually
+cd apps/api && pnpm dev    # Backend on http://localhost:3000
+cd apps/web && pnpm dev    # Frontend on http://localhost:5173
+```
+
+Access:
+- Frontend: http://localhost:5173
+- API: http://localhost:3000
+- API Docs: http://localhost:3000/api-docs
+- Prometheus: http://localhost:9464/metrics
+- Health: http://localhost:3000/health
+
+### Tests
+
+```bash
+pnpm test                      # All tests
+pnpm --filter api test:watch   # Watch mode
+pnpm --filter api test:coverage # Coverage
+pnpm --filter api test:ui       # UI mode
+```
+
+### Build
+
+```bash
+pnpm build                           # All packages
+pnpm --filter @martech/types build   # Specific package
+pnpm --filter api build
+pnpm --filter web build
 ```
 
 ## Security
 
-- SSL/TLS encryption for all endpoints
-- Better Auth with secure session cookies
-- MongoDB connection with TLS
-- IAM roles for AWS resource access
-- CORS configured for allowed origins
-- Environment variables with NoEcho in CloudFormation
-- Custom TypeScript validators for runtime type safety
+SSL/TLS encryption for all endpoints. Better Auth with secure session cookies. MongoDB connection with TLS. IAM roles for AWS resources. CORS configured for allowed origins. Environment variables with NoEcho in CloudFormation. Custom TypeScript validators for runtime type safety.
 
 ## Contributing
 
-1. Follow the code style guide in [CLAUDE.md](CLAUDE.md)
-2. Write tests for new features
-3. Update documentation for API changes
-4. Run `pnpm test` before committing
-5. Keep files under 200 lines
-6. Use pure functions where possible
+Follow the code style in [CLAUDE.md](CLAUDE.md). Write tests for new features. Update docs for API changes. Run `pnpm test` before committing. Keep files under 200 lines. Use pure functions where possible.
 
 ## License
 
