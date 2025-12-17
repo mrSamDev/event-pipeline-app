@@ -1,0 +1,14 @@
+# Global code owner for all files
+* @mrSamDev
+
+# Workflow files
+/.github/ @mrSamDev
+
+# Frontend
+/apps/web/ @mrSamDev
+
+# Backend API
+/apps/api/ @mrSamDev
+
+# Shared types
+/packages/types/ @mrSamDev
