@@ -1,4 +1,4 @@
-export { initializeTelemetry } from "./telemetry";
 export { logger } from "./logger";
-export { startMetricsCollection } from "./metrics";
 export * from "./metrics";
+export { startMetricsCollection } from "./metrics";
+export { initializeTelemetry } from "./telemetry";
