@@ -1,22 +1,22 @@
-import { useState } from 'react';
-import type { FormEvent } from 'react';
-import { useNavigate, Link, Navigate } from 'react-router-dom';
-import { signUp, signUpSchema, useAuth } from '../features/auth';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Loader } from '../components/Loader';
-import { Input } from '../components/ui/input';
-import { Button } from '../components/ui/button';
-import { BarChart3 } from 'lucide-react';
-import { ZodError } from 'zod';
+import { useState } from "react";
+import type { FormEvent } from "react";
+import { useNavigate, Link, Navigate } from "react-router-dom";
+import { signUp, signUpSchema, useAuth } from "../features/auth";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { Loader } from "../components/Loader";
+import { Input } from "../components/ui/input";
+import { Button } from "../components/ui/button";
+import { BarChart3 } from "lucide-react";
+import { ZodError } from "zod";
 
 export function SignUp() {
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
+    name: "",
+    email: "",
+    password: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [serverError, setServerError] = useState('');
+  const [serverError, setServerError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { isAuthenticated, isLoading } = useAuth();
@@ -36,35 +36,42 @@ export function SignUp() {
   function validateField(field: string, value: string) {
     try {
       signUpSchema.pick({ [field]: true } as any).parse({ [field]: value });
-      setErrors(prev => {
+      setErrors((prev) => {
         const newErrors = { ...prev };
         delete newErrors[field];
         return newErrors;
       });
     } catch (err) {
       if (err instanceof ZodError && err.issues.length > 0) {
-        setErrors(prev => ({
+        setErrors((prev) => ({
           ...prev,
-          [field]: err.issues[0].message
+          [field]: err.issues[0].message,
         }));
       }
     }
   }
 
   function handleChange(field: string, value: string) {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
     validateField(field, value);
   }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    setServerError('');
+    setServerError("");
 
     try {
       const validatedData = signUpSchema.parse(formData);
       setLoading(true);
-      await signUp(validatedData);
-      navigate('/dashboard');
+      const response = await signUp(validatedData);
+
+      if (response.error) {
+        setServerError(response.error.message || "Failed to sign up");
+        setLoading(false);
+        return;
+      }
+
+      navigate("/dashboard");
     } catch (err) {
       if (err instanceof ZodError) {
         const fieldErrors: Record<string, string> = {};
@@ -74,8 +81,6 @@ export function SignUp() {
           }
         });
         setErrors(fieldErrors);
-      } else {
-        setServerError(err instanceof Error ? err.message : 'Failed to sign up');
       }
     } finally {
       setLoading(false);
@@ -99,17 +104,13 @@ export function SignUp() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              {serverError && (
-                <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
-                  {serverError}
-                </div>
-              )}
+              {serverError && <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">{serverError}</div>}
 
               <Input
                 label="Full Name"
                 type="text"
                 value={formData.name}
-                onChange={(e) => handleChange('name', e.target.value)}
+                onChange={(e) => handleChange("name", e.target.value)}
                 placeholder="John Doe"
                 error={errors.name}
                 required
@@ -120,7 +121,7 @@ export function SignUp() {
                 label="Email"
                 type="email"
                 value={formData.email}
-                onChange={(e) => handleChange('email', e.target.value)}
+                onChange={(e) => handleChange("email", e.target.value)}
                 placeholder="you@example.com"
                 error={errors.email}
                 required
@@ -131,23 +132,19 @@ export function SignUp() {
                 label="Password"
                 type="password"
                 value={formData.password}
-                onChange={(e) => handleChange('password', e.target.value)}
+                onChange={(e) => handleChange("password", e.target.value)}
                 placeholder="At least 8 characters"
                 error={errors.password}
                 required
                 disabled={loading}
               />
 
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={loading || Object.keys(errors).length > 0}
-              >
-                {loading ? 'Creating account...' : 'Sign Up'}
+              <Button type="submit" className="w-full" disabled={loading || Object.keys(errors).length > 0}>
+                {loading ? "Creating account..." : "Sign Up"}
               </Button>
 
               <div className="text-center text-sm text-gray-600">
-                Already have an account?{' '}
+                Already have an account?{" "}
                 <Link to="/login" className="text-[#004747] hover:underline font-medium">
                   Sign in
                 </Link>

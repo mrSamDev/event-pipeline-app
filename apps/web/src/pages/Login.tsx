@@ -35,15 +35,18 @@ export function Login() {
     setError("");
     setLoading(true);
 
-    try {
-      await signIn({ email, password });
-      await queryClient.invalidateQueries({ queryKey: ["session"] });
-      navigate("/dashboard");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to sign in");
-    } finally {
+    const response = await signIn({ email, password });
+
+    if (response.error) {
+      setError(response.error.message || "Failed to sign in");
       setLoading(false);
+      return;
     }
+
+    console.log("response: ", response);
+    await queryClient.invalidateQueries({ queryKey: ["session"] });
+    navigate("/dashboard");
+    setLoading(false);
   }
 
   return (

@@ -2,23 +2,11 @@ import { authClient } from "@/lib/authClient";
 import type { SignUpData, SignInData, Session } from "./schemas";
 
 export async function signUp(data: SignUpData) {
-  return authClient.$fetch("/sign-up/email", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
-  });
+  return authClient.signUp.email(data);
 }
 
 export async function signIn(data: SignInData) {
-  return authClient.$fetch("/sign-in/email", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
-  });
+  return authClient.signIn.email(data);
 }
 
 export async function signOut() {
