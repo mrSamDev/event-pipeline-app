@@ -469,7 +469,9 @@ Monitoring: CloudWatch + Grafana dashboards. Buffer size and flush rate tracking
 
 ### Load Testing
 
-k6 load test results:
+**Note:** Load testing was performed locally on a development machine to avoid AWS EC2 cost implications. The architecture is designed to be scale-ready and can handle significantly higher loads when deployed on production-grade infrastructure. The same test can be re-run on AWS by scaling the instance size or running multiple instances behind a load balancer.
+
+k6 load test results (local environment):
 
 - 300,000 events in 30 seconds (~10,000 events/sec)
 - p95 latency: <50ms
@@ -488,6 +490,14 @@ export const options = {
   ],
 };
 ```
+
+The architecture supports horizontal scaling through:
+- Stateless API design (multiple instances can run behind a load balancer)
+- PM2 cluster mode for multi-core utilization
+- MongoDB connection pooling
+- No instance-specific in-memory state
+
+When scaled up to EC2 instances with more resources, the system can handle proportionally higher throughput.
 
 ### Capacity
 
