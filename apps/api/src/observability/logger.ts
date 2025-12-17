@@ -1,13 +1,13 @@
 import winston from "winston";
-import LokiTransport from "winston-loki";
+import WinstonCloudWatch from "winston-cloudwatch";
 
 /**
- * Create a structured logger with Loki support
- * Logs are sent to Loki for centralized log aggregation in Grafana
+ * Create a structured logger with CloudWatch support
+ * Logs are sent to CloudWatch Logs when running on AWS EC2
  */
 export function createLogger() {
-  const lokiHost = process.env.LOKI_HOST || "http://localhost:3100";
-  const isProduction = process.env.NODE_ENV === "production";
+  const awsRegion = process.env.AWS_REGION || "ap-south-1";
+  const enableCloudWatch = process.env.ENABLE_CLOUDWATCH_LOGS === "true";
 
   // Base format: timestamp + level + message + metadata
   const baseFormat = winston.format.combine(
@@ -19,39 +19,32 @@ export function createLogger() {
 
   const transports: winston.transport[] = [];
 
-  // Console transport for development
-  if (!isProduction) {
-    transports.push(
-      new winston.transports.Console({
-        format: winston.format.combine(
-          winston.format.colorize(),
-          winston.format.printf(({ timestamp, level, message, ...meta }) => {
-            const metaStr = Object.keys(meta).length ? JSON.stringify(meta, null, 2) : "";
-            return `${timestamp} [${level}] ${message} ${metaStr}`;
-          })
-        ),
-      })
-    );
-  }
+  // Console transport (always enabled for visibility)
+  transports.push(
+    new winston.transports.Console({
+      format: winston.format.combine(
+        winston.format.colorize(),
+        winston.format.printf(({ timestamp, level, message, ...meta }) => {
+          const metaStr = Object.keys(meta).length ? JSON.stringify(meta, null, 2) : "";
+          return `${timestamp} [${level}] ${message} ${metaStr}`;
+        })
+      ),
+    })
+  );
 
-  // Loki transport for production (or if LOKI_HOST is set)
-  if (isProduction || process.env.LOKI_HOST) {
+  // CloudWatch transport for AWS EC2 deployments
+  if (enableCloudWatch) {
     transports.push(
-      new LokiTransport({
-        host: lokiHost,
-        labels: {
-          service: "martech-api",
-          environment: process.env.NODE_ENV || "development",
-        },
-        json: true,
-        format: baseFormat,
-        replaceTimestamp: true,
-        onConnectionError: (err) => {
-          console.error("[Logger] Failed to connect to Loki:", err);
+      new WinstonCloudWatch({
+        logGroupName: "/aws/ec2/martech-api",
+        logStreamName: `api-${new Date().toISOString().split("T")[0]}`,
+        awsRegion: awsRegion,
+        messageFormatter: ({ level, message, ...meta }) => {
+          return JSON.stringify({ level, message, ...meta });
         },
       })
     );
-    console.log(`[Logger] Loki transport configured: ${lokiHost}`);
+    console.log(`[Logger] CloudWatch transport configured: ${awsRegion}`);
   }
 
   const logger = winston.createLogger({
