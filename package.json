@@ -7,9 +7,17 @@
   "scripts": {
     "dev": "pnpm -r --parallel dev",
     "build": "pnpm -r build",
-    "test": "pnpm -r test"
+    "test": "pnpm -r test",
+    "lint": "biome lint .",
+    "lint:fix": "biome lint . --apply",
+    "format": "biome format . --write",
+    "check": "biome check .",
+    "check:fix": "biome check . --apply"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "@biomejs/biome": "^2.3.9"
+  }
 }
