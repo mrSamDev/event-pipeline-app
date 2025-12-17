@@ -32,7 +32,7 @@ Current load is 12 events/sec. Built to handle 10,000. That's 833x headroom.
 │  Express API    │
 │   (Backend)     │      ┌──────────────┐
 │                 │◄────►│   MongoDB    │
-│  Event Buffer   │      │    Atlas     │
+│  Event Buffer   │      │              │
 │  + PM2 Cluster  │      └──────────────┘
 └────────┬────────┘
          │
@@ -40,7 +40,7 @@ Current load is 12 events/sec. Built to handle 10,000. That's 833x headroom.
 ┌─────────────────┐
 │  Observability  │
 │                 │
-│  Prometheus     │
+│                 │
 │  CloudWatch     │
 │  OpenTelemetry  │
 └─────────────────┘
@@ -167,6 +167,62 @@ Health:
 - `GET /health` - Health check, database status
 
 Full docs at `/api-docs`. Try requests directly in the browser.
+
+## UI Usage
+
+### Login Page
+
+![Login Page](usage/login.png)
+
+**Flow:**
+1. User enters email and password
+2. Form validates input with Zod schema
+3. On successful sign in, redirects to Dashboard
+4. New users can click "Sign up" link to register
+
+### Sign Up Page
+
+![Sign Up Page](usage/signup.png)
+
+**Flow:**
+1. User enters full name, email, and password (minimum 8 characters)
+2. Form validates input with Zod schema
+3. On successful registration, account is created
+4. Redirects to Dashboard
+5. Existing users can click "Sign in" link
+
+### Dashboard
+
+![Dashboard](usage/dashboard.png)
+
+**Flow:**
+1. After login, user lands on Dashboard
+2. View KPI cards: Total Users, Total Events, Avg Events/User
+3. Analyze charts: Events Per Day (line chart), Events by Type (bar chart)
+4. Review Most Common Event Types table
+5. Navigate to Users page or Logout via top navigation
+
+### Users Overview
+
+![Users Overview](usage/userview.png)
+
+**Flow:**
+1. Click "Users" link in top navigation
+2. View paginated table of all users with metrics
+3. See User ID, Total Sessions, Total Events, Last Active timestamp
+4. Click any user row to view their journey
+5. Use pagination controls to browse through users
+
+### User Journey
+
+![User Journey](usage/userjourney.png)
+
+**Flow:**
+1. Click a user row from Users Overview
+2. View user's complete event timeline grouped by session
+3. See session details: Session ID, start/end time, event count
+4. Review individual events with icons, timestamps, and metadata
+5. Click "Back to Users" to return to Users Overview
 
 ## Event Types
 

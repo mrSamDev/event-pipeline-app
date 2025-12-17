@@ -13,7 +13,8 @@
       "Bash(aws cloudformation list-change-sets:*)",
       "Bash(aws cloudformation validate-template:*)",
       "Bash(aws cloudformation describe-stack-resources:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []
