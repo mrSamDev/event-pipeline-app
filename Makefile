@@ -1,7 +1,7 @@
 .PHONY: deploy update delete describe status help
 
-ifneq (,$(wildcard .env))
-    include .env
+ifneq (,$(wildcard .env.production))
+    include .env.production
     export
 endif
 
@@ -23,9 +23,10 @@ deploy:
 	aws cloudformation deploy \
 		--template-file $(TEMPLATE_FILE) \
 		--stack-name $(STACK_NAME) \
-		--parameter-overrides KeyName=$(KEY_NAME) \
-		MongoDBUri=$(MONGODB_URI) \
-		AllowedOrigins=$(ALLOWED_ORIGINS) \
+		--parameter-overrides \
+			KeyName=$(KEY_NAME) \
+			MongoDBUri=$(MONGODB_URI) \
+			AllowedOrigins=$(ALLOWED_ORIGINS) \
 		--capabilities CAPABILITY_NAMED_IAM \
 		--region $(REGION)
 	@echo "Stack deployed successfully!"

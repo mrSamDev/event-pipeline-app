@@ -8,7 +8,11 @@
       "Bash(pnpm:*)",
       "Bash(wc:*)",
       "Bash(find:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(aws cloudformation describe-stack-events:*)",
+      "Bash(aws cloudformation list-change-sets:*)",
+      "Bash(aws cloudformation validate-template:*)",
+      "Bash(aws cloudformation describe-stack-resources:*)"
     ],
     "deny": [],
     "ask": []
