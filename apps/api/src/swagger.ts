@@ -43,7 +43,7 @@ A production-grade event ingestion pipeline with user authentication.
       description: "Development server",
     },
     {
-      url: "https://api.example.com",
+      url: "https://api-veritas.mrsamdev.xyz",
       description: "Production server",
     },
   ],
@@ -268,6 +268,7 @@ const options: swaggerJsdoc.Options = {
           tags: ["Events"],
           summary: "Get user event journey",
           description: "Retrieve a user's event timeline with optional date range filtering and pagination",
+          security: [{ cookieAuth: [] }],
           parameters: [
             { in: "path", name: "userId", required: true, schema: { type: "string" }, description: "User identifier", example: "user123" },
             { in: "query", name: "from", schema: { type: "string", format: "date-time" }, description: "Start date (ISO 8601 format)", example: "2025-12-01T00:00:00Z" },
@@ -291,6 +292,7 @@ const options: swaggerJsdoc.Options = {
               },
             },
             400: { description: "Invalid query parameters", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+            401: { description: "Not authenticated" },
           },
         },
       },
@@ -299,6 +301,7 @@ const options: swaggerJsdoc.Options = {
           tags: ["Monitoring"],
           summary: "Get buffer statistics",
           description: "Returns current buffer state and statistics for monitoring purposes",
+          security: [{ cookieAuth: [] }],
           responses: {
             200: {
               description: "Buffer statistics retrieved successfully",
@@ -312,6 +315,56 @@ const options: swaggerJsdoc.Options = {
                       maxBufferSize: { type: "integer", description: "Buffer size threshold that triggers flush", example: 500 },
                       emergencyThreshold: { type: "integer", description: "Emergency threshold where events start getting dropped", example: 5000 },
                       bufferUtilization: { type: "number", description: "Buffer usage percentage", example: 30 },
+                    },
+                  },
+                },
+              },
+            },
+            401: { description: "Not authenticated" },
+          },
+        },
+      },
+      "/health": {
+        get: {
+          tags: ["Monitoring"],
+          summary: "Health check endpoint",
+          description: "Returns service health status including database connection, uptime, memory usage, and buffer size",
+          responses: {
+            200: {
+              description: "Service is healthy",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      status: { type: "string", example: "ok" },
+                      timestamp: { type: "string", format: "date-time", example: "2025-12-17T10:30:00.000Z" },
+                      uptime: { type: "number", description: "Process uptime in seconds", example: 3600 },
+                      memory: {
+                        type: "object",
+                        properties: {
+                          rss: { type: "number", description: "Resident Set Size" },
+                          heapTotal: { type: "number", description: "Total heap size" },
+                          heapUsed: { type: "number", description: "Used heap size" },
+                          external: { type: "number", description: "External memory" },
+                        },
+                      },
+                      database: { type: "string", enum: ["connected", "disconnected"], example: "connected" },
+                      bufferSize: { type: "integer", description: "Current events in buffer", example: 150 },
+                    },
+                  },
+                },
+              },
+            },
+            503: {
+              description: "Service unavailable (database disconnected)",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      status: { type: "string", example: "ok" },
+                      database: { type: "string", example: "disconnected" },
                     },
                   },
                 },
@@ -465,7 +518,8 @@ const options: swaggerJsdoc.Options = {
         get: {
           tags: ["Authentication"],
           summary: "List all users",
-          description: "Get a list of all registered users. **WARNING**: This endpoint should be protected with proper authorization in production.",
+          description: "Get a list of all registered users with their metrics",
+          security: [{ cookieAuth: [] }],
           responses: {
             200: {
               description: "Users retrieved successfully",
@@ -480,6 +534,7 @@ const options: swaggerJsdoc.Options = {
                 },
               },
             },
+            401: { description: "Not authenticated" },
           },
         },
       },
