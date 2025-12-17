@@ -1,9 +1,9 @@
-import { useQuery } from '@tanstack/react-query';
-import { fetchStats } from './api';
+import { useQuery } from "@tanstack/react-query";
+import { fetchStats } from "./api";
 
 export function useStats() {
-  return useQuery({
-    queryKey: ['stats'],
-    queryFn: fetchStats,
-  });
+	return useQuery({
+		queryKey: ["stats"],
+		queryFn: fetchStats,
+	});
 }

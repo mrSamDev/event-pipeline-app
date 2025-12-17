@@ -1,10 +1,10 @@
-import { useQuery } from '@tanstack/react-query';
-import { fetchUserJourney } from '../lib/api';
+import { useQuery } from "@tanstack/react-query";
+import { fetchUserJourney } from "../lib/api";
 
 export function useUserJourney(userId: string) {
-  return useQuery({
-    queryKey: ['userJourney', userId],
-    queryFn: () => fetchUserJourney(userId),
-    enabled: !!userId,
-  });
+	return useQuery({
+		queryKey: ["userJourney", userId],
+		queryFn: () => fetchUserJourney(userId),
+		enabled: !!userId,
+	});
 }
