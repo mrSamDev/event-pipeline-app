@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
-import { type MongoClient } from "mongodb";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
+import type { MongoClient } from "mongodb";
 import mongoose from "mongoose";
 
 /**
@@ -22,30 +22,32 @@ import mongoose from "mongoose";
  * This reuses the existing mongoose connection instead of creating a new one
  */
 function getMongoClient(): MongoClient {
-  if (mongoose.connection.readyState !== 1) {
-    throw new Error("Mongoose must be connected before initializing Better Auth. Call mongoose.connect() first.");
-  }
+	if (mongoose.connection.readyState !== 1) {
+		throw new Error(
+			"Mongoose must be connected before initializing Better Auth. Call mongoose.connect() first.",
+		);
+	}
 
-  // Get the native MongoDB client from mongoose
-  const client = mongoose.connection.getClient() as MongoClient;
-  if (!client) {
-    throw new Error("Failed to get MongoDB client from mongoose connection");
-  }
-  return client;
+	// Get the native MongoDB client from mongoose
+	const client = mongoose.connection.getClient() as MongoClient;
+	if (!client) {
+		throw new Error("Failed to get MongoDB client from mongoose connection");
+	}
+	return client;
 }
 
 /**
  * Get MongoDB database instance from mongoose
  */
 function getMongoDb() {
-  const client = getMongoClient();
-  const dbName = mongoose.connection.db?.databaseName;
+	const client = getMongoClient();
+	const dbName = mongoose.connection.db?.databaseName;
 
-  if (!dbName) {
-    throw new Error("Failed to get database name from mongoose connection");
-  }
+	if (!dbName) {
+		throw new Error("Failed to get database name from mongoose connection");
+	}
 
-  return client.db(dbName);
+	return client.db(dbName);
 }
 
 /**
@@ -53,72 +55,75 @@ function getMongoDb() {
  * Must be called after mongoose.connect() has completed
  */
 export function initAuth() {
-  const db = getMongoDb();
+	const db = getMongoDb();
 
-  const trustedOrigins = process.env.ALLOWED_ORIGINS?.split(",").map(o => o.trim()) || [
-    "http://localhost:3000",
-    "http://localhost:5173",
-  ];
+	const trustedOrigins = process.env.ALLOWED_ORIGINS?.split(",").map((o) =>
+		o.trim(),
+	) || ["http://localhost:3000", "http://localhost:5173"];
 
-  console.log("[Auth] Initializing Better Auth with config:");
-  console.log(`  - baseURL: ${process.env.BETTER_AUTH_URL || "http://localhost:3000"}`);
-  console.log(`  - trustedOrigins:`, trustedOrigins);
-  console.log(`  - useSecureCookies: ${process.env.NODE_ENV === "production"}`);
+	console.log("[Auth] Initializing Better Auth with config:");
+	console.log(
+		`  - baseURL: ${process.env.BETTER_AUTH_URL || "http://localhost:3000"}`,
+	);
+	console.log(`  - trustedOrigins:`, trustedOrigins);
+	console.log(`  - useSecureCookies: ${process.env.NODE_ENV === "production"}`);
 
-  return betterAuth({
-    database: mongodbAdapter(db, {
-      // Don't provide client to disable transactions
-      // Transactions require MongoDB replica set, which most dev environments don't have
-      // client: client,
-    }),
+	return betterAuth({
+		database: mongodbAdapter(db, {
+			// Don't provide client to disable transactions
+			// Transactions require MongoDB replica set, which most dev environments don't have
+			// client: client,
+		}),
 
-    // Email and password authentication
-    emailAndPassword: {
-      enabled: true,
-      // Require email verification before login (set to false for development)
-      requireEmailVerification: false,
-    },
+		// Email and password authentication
+		emailAndPassword: {
+			enabled: true,
+			// Require email verification before login (set to false for development)
+			requireEmailVerification: false,
+		},
 
-    // Session configuration
-    session: {
-      // Session expires after 7 days of inactivity
-      expiresIn: 60 * 60 * 24 * 7, // 7 days in seconds
-      // Update session expiry on each request
-      updateAge: 60 * 60 * 24, // 1 day in seconds
-    },
+		// Session configuration
+		session: {
+			// Session expires after 7 days of inactivity
+			expiresIn: 60 * 60 * 24 * 7, // 7 days in seconds
+			// Update session expiry on each request
+			updateAge: 60 * 60 * 24, // 1 day in seconds
+		},
 
-    // Security settings
-    secret: process.env.BETTER_AUTH_SECRET || "please-change-this-secret-in-production",
+		// Security settings
+		secret:
+			process.env.BETTER_AUTH_SECRET ||
+			"please-change-this-secret-in-production",
 
-    // Base URL for the application
-    baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
+		// Base URL for the application
+		baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
 
-    // Trusted origins for CORS
-    trustedOrigins,
+		// Trusted origins for CORS
+		trustedOrigins,
 
-    // Enable experimental features
-    experimental: {
-      // Database joins for better performance (2-3x improvement)
-      joins: true,
-    },
+		// Enable experimental features
+		experimental: {
+			// Database joins for better performance (2-3x improvement)
+			joins: true,
+		},
 
-    // Advanced options
-    advanced: {
-      // Use secure cookies in production
-      useSecureCookies: process.env.NODE_ENV === "production",
-      // Cross-site cookie settings
-      crossSubDomainCookies: {
-        enabled: false,
-      },
-      // Cookie options
-      cookieOptions: {
-        sameSite: "none", // Required for cross-origin cookies
-        secure: process.env.NODE_ENV === "production",
-        httpOnly: true,
-        path: "/",
-      },
-    },
-  });
+		// Advanced options
+		advanced: {
+			// Use secure cookies in production
+			useSecureCookies: process.env.NODE_ENV === "production",
+			// Cross-site cookie settings
+			crossSubDomainCookies: {
+				enabled: false,
+			},
+			// Cookie options
+			cookieOptions: {
+				sameSite: "none", // Required for cross-origin cookies
+				secure: process.env.NODE_ENV === "production",
+				httpOnly: true,
+				path: "/",
+			},
+		},
+	});
 }
 
 /**
@@ -128,10 +133,10 @@ export function initAuth() {
 let authInstance: ReturnType<typeof betterAuth> | null = null;
 
 export function getAuth() {
-  if (!authInstance) {
-    authInstance = initAuth();
-  }
-  return authInstance;
+	if (!authInstance) {
+		authInstance = initAuth();
+	}
+	return authInstance;
 }
 
 // Export the type for use in other files

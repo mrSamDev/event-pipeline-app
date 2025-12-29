@@ -1,5 +1,4 @@
-import swaggerJsdoc from "swagger-jsdoc";
-import { SwaggerDefinition } from "swagger-jsdoc";
+import swaggerJsdoc, { type SwaggerDefinition } from "swagger-jsdoc";
 
 /**
  * Swagger/OpenAPI Configuration

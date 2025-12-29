@@ -1,195 +1,191 @@
-import { Request, Response } from 'express';
-import { EventIngestionService } from '../services/eventIngestion.service';
-import { EventRepository, NormalizedEvent } from '../repositories/event.repository';
-import { RawEvent, validateRawEvent, validateDate, validateLimit } from '../validators/event.validator';
-import { normalizeEvent } from '../utils/eventNormalizer';
+import type { Request, Response } from "express";
+import {
+	getErrorMessage,
+	getErrorStatusCode,
+	isAppError,
+	isError,
+	ValidationError,
+} from "../errors/AppError";
+import { logger } from "../observability/logger";
+import type { EventRepository } from "../repositories/event.repository";
+import type { EventIngestionService } from "../services/eventIngestion.service";
+import { validateAndNormalizeEvents } from "./helpers/eventValidation";
+import { parsePaginationParams } from "./helpers/paginationParser";
 
 export class EventsController {
-  constructor(
-    private ingestionService: EventIngestionService,
-    private repository: EventRepository
-  ) {}
+	constructor(
+		private ingestionService: EventIngestionService,
+		private repository: EventRepository,
+	) {}
 
-  async ingestEvent(req: Request, res: Response): Promise<void> {
-    try {
-      if (!this.ingestionService.canAcceptEvent()) {
-        res.status(429).json({
-          error: 'Too Many Requests',
-          message: 'Event buffer at capacity, try again shortly',
-          retryAfter: 1,
-        });
-        return;
-      }
+	async ingestEvent(req: Request, res: Response): Promise<void> {
+		try {
+			if (!this.ingestionService.canAcceptEvent()) {
+				res.status(429).json({
+					error: "Too Many Requests",
+					message: "Event buffer at capacity, try again shortly",
+					retryAfter: 1,
+				});
+				return;
+			}
 
-      const rawEvents: RawEvent[] = Array.isArray(req.body) ? req.body : [req.body];
-      const normalizedEvents: NormalizedEvent[] = [];
+			const rawEvents: unknown[] = Array.isArray(req.body)
+				? req.body
+				: [req.body];
 
-      for (const rawEvent of rawEvents) {
-        const validationError = validateRawEvent(rawEvent);
-        if (validationError) {
-          res.status(400).json(validationError);
-          return;
-        }
+			if (rawEvents.length === 0) {
+				throw new ValidationError(
+					"Request body must contain at least one event",
+				);
+			}
 
-        const normalized = normalizeEvent(rawEvent);
+			if (rawEvents.length > 1000) {
+				throw new ValidationError("Batch size cannot exceed 1000 events", {
+					receivedCount: rawEvents.length,
+				});
+			}
 
-        if (isNaN(normalized.occurredAt.getTime())) {
-          res.status(400).json({
-            error: 'Bad Request',
-            message: 'Invalid occurredAt timestamp format',
-          });
-          return;
-        }
+			const normalizedEvents = validateAndNormalizeEvents(rawEvents);
 
-        normalizedEvents.push(normalized);
-      }
+			const addPromises = normalizedEvents.map((event) =>
+				this.ingestionService.addEvent(event),
+			);
+			await Promise.all(addPromises);
 
-      const addPromises = normalizedEvents.map((event) =>
-        this.ingestionService.addEvent(event)
-      );
+			res.status(202).json({
+				message: "Events accepted for processing",
+				count: normalizedEvents.length,
+				eventIds: normalizedEvents.map((e) => e.eventId),
+			});
+		} catch (error: unknown) {
+			const errorMessage = getErrorMessage(error);
+			const statusCode = getErrorStatusCode(error);
 
-      await Promise.all(addPromises);
+			if (statusCode >= 500) {
+				const errorDetails = isError(error) ? { stack: error.stack } : {};
+				logger.error("[EventsController] ingestEvent error", {
+					error: errorMessage,
+					...errorDetails,
+				});
+			} else if (process.env.NODE_ENV !== "production") {
+				logger.debug("[EventsController] ingestEvent validation error", {
+					error: errorMessage,
+				});
+			}
 
-      res.status(202).json({
-        message: 'Events accepted for processing',
-        count: normalizedEvents.length,
-        eventIds: normalizedEvents.map((e) => e.eventId),
-      });
+			res.status(statusCode).json({
+				error: isAppError(error) ? error.name : "Internal Server Error",
+				message: errorMessage,
+			});
+		}
+	}
 
-    } catch (error: any) {
-      // Minimal logging for high-throughput endpoint
-      if (process.env.NODE_ENV !== 'production') {
-        console.error('[EventsController] ingestEvent error:', error);
-      }
+	async getUserJourney(req: Request, res: Response): Promise<void> {
+		try {
+			const { userId } = req.params;
+			const { from, to, limit } = req.query;
 
-      res.status(500).json({
-        error: 'Internal Server Error',
-        message: 'An unexpected error occurred while processing events',
-      });
-    }
-  }
+			if (!userId || typeof userId !== "string") {
+				throw new ValidationError("Invalid userId parameter");
+			}
 
-  async getUserJourney(req: Request, res: Response): Promise<void> {
-    try {
-      const { userId } = req.params;
-      const { from, to, limit } = req.query;
+			const options: {
+				from?: Date;
+				to?: Date;
+				limit?: number;
+			} = {};
 
-      if (!userId || typeof userId !== 'string') {
-        res.status(400).json({
-          error: 'Bad Request',
-          message: 'Invalid userId parameter',
-        });
-        return;
-      }
+			if (from !== undefined) {
+				const { validateDateParam } = await import(
+					"../validators/event.validator"
+				);
+				options.from = validateDateParam(from);
+			}
 
-      const options: {
-        from?: Date;
-        to?: Date;
-        limit?: number;
-      } = {};
+			if (to !== undefined) {
+				const { validateDateParam } = await import(
+					"../validators/event.validator"
+				);
+				options.to = validateDateParam(to);
+			}
 
-      if (from) {
-        const fromDate = validateDate(from as string);
-        if (!fromDate) {
-          res.status(400).json({
-            error: 'Bad Request',
-            message: 'Invalid "from" date format. Use ISO 8601 format (e.g., 2025-01-01T00:00:00Z)',
-          });
-          return;
-        }
-        options.from = fromDate;
-      }
+			if (limit !== undefined) {
+				const { validateLimitParam } = await import(
+					"../validators/event.validator"
+				);
+				options.limit = validateLimitParam(limit);
+			}
 
-      if (to) {
-        const toDate = validateDate(to as string);
-        if (!toDate) {
-          res.status(400).json({
-            error: 'Bad Request',
-            message: 'Invalid "to" date format. Use ISO 8601 format (e.g., 2025-01-31T23:59:59Z)',
-          });
-          return;
-        }
-        options.to = toDate;
-      }
+			const events = await this.repository.getUserJourney(userId, options);
 
-      if (limit) {
-        const limitNum = validateLimit(limit as string);
-        if (limitNum === null) {
-          res.status(400).json({
-            error: 'Bad Request',
-            message: 'Invalid "limit" parameter. Must be a number between 1 and 1000',
-          });
-          return;
-        }
-        options.limit = limitNum;
-      }
+			res.status(200).json({
+				userId,
+				count: events.length,
+				events,
+			});
+		} catch (error: unknown) {
+			const errorMessage = getErrorMessage(error);
+			const statusCode = getErrorStatusCode(error);
+			const errorDetails = isError(error) ? { stack: error.stack } : {};
 
-      const events = await this.repository.getUserJourney(userId, options);
+			logger.error("[EventsController] getUserJourney error", {
+				error: errorMessage,
+				userId: req.params.userId,
+				...errorDetails,
+			});
 
-      res.status(200).json({
-        userId,
-        count: events.length,
-        events,
-      });
+			res.status(statusCode).json({
+				error: isAppError(error) ? error.name : "Internal Server Error",
+				message: errorMessage,
+			});
+		}
+	}
 
-    } catch (error: any) {
-      console.error('[EventsController] getUserJourney error:', error);
+	async getStats(_req: Request, res: Response): Promise<void> {
+		try {
+			const stats = await this.repository.getAnalyticsStats();
+			res.status(200).json(stats);
+		} catch (error: unknown) {
+			const errorMessage = getErrorMessage(error);
+			const statusCode = getErrorStatusCode(error);
+			const errorDetails = isError(error) ? { stack: error.stack } : {};
 
-      res.status(500).json({
-        error: 'Internal Server Error',
-        message: 'An error occurred while fetching user journey',
-      });
-    }
-  }
+			logger.error("[EventsController] getStats error", {
+				error: errorMessage,
+				...errorDetails,
+			});
 
-  async getStats(_req: Request, res: Response): Promise<void> {
-    try {
-      const stats = await this.repository.getAnalyticsStats();
-      res.status(200).json(stats);
-    } catch (error: any) {
-      console.error('[EventsController] getStats error:', error);
-      res.status(500).json({
-        error: 'Internal Server Error',
-        message: 'An error occurred while fetching statistics',
-      });
-    }
-  }
+			res.status(statusCode).json({
+				error: isAppError(error) ? error.name : "Internal Server Error",
+				message: errorMessage,
+			});
+		}
+	}
 
-  async getUsers(req: Request, res: Response): Promise<void> {
-    try {
-      const { page, pageSize } = req.query;
+	async getUsers(req: Request, res: Response): Promise<void> {
+		try {
+			const { page, pageSize } = parsePaginationParams(req.query);
 
-      const pageNum = page ? parseInt(page as string, 10) : 1;
-      const pageSizeNum = pageSize ? parseInt(pageSize as string, 10) : 10;
+			const result = await this.repository.getUserMetrics({
+				page,
+				pageSize,
+			});
 
-      if (isNaN(pageNum) || pageNum < 1) {
-        res.status(400).json({
-          error: 'Bad Request',
-          message: 'Invalid page parameter. Must be a positive integer',
-        });
-        return;
-      }
+			res.status(200).json(result);
+		} catch (error: unknown) {
+			const errorMessage = getErrorMessage(error);
+			const statusCode = getErrorStatusCode(error);
+			const errorDetails = isError(error) ? { stack: error.stack } : {};
 
-      if (isNaN(pageSizeNum) || pageSizeNum < 1 || pageSizeNum > 100) {
-        res.status(400).json({
-          error: 'Bad Request',
-          message: 'Invalid pageSize parameter. Must be between 1 and 100',
-        });
-        return;
-      }
+			logger.error("[EventsController] getUsers error", {
+				error: errorMessage,
+				...errorDetails,
+			});
 
-      const result = await this.repository.getUserMetrics({
-        page: pageNum,
-        pageSize: pageSizeNum
-      });
-
-      res.status(200).json(result);
-    } catch (error: any) {
-      console.error('[EventsController] getUsers error:', error);
-      res.status(500).json({
-        error: 'Internal Server Error',
-        message: 'An error occurred while fetching users',
-      });
-    }
-  }
+			res.status(statusCode).json({
+				error: isAppError(error) ? error.name : "Internal Server Error",
+				message: errorMessage,
+			});
+		}
+	}
 }
