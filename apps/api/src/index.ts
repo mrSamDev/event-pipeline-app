@@ -1,18 +1,23 @@
-import express from "express";
-import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
-import swaggerUi from "swagger-ui-express";
+import express from "express";
+import mongoose from "mongoose";
 import path from "path";
-import { registerRoutes } from "./routes";
-import { EventIngestionService } from "./services/eventIngestion.service";
-import { swaggerSpec } from "./swagger";
-import { initializeTelemetry, logger, startMetricsCollection, bufferSizeGauge } from "./observability";
-import { observabilityMiddleware } from "./middleware/observability.middleware";
-import { sessionMiddleware } from "./middleware/auth.middleware";
+import swaggerUi from "swagger-ui-express";
 import { connectDatabase } from "./database/connection";
-import { gracefulShutdown } from "./utils/shutdown";
 import { startDailyAnalyticsExportJob } from "./jobs/dailyAnalyticsExport.job";
+import { sessionMiddleware } from "./middleware/auth.middleware";
+import { observabilityMiddleware } from "./middleware/observability.middleware";
+import {
+	bufferSizeGauge,
+	initializeTelemetry,
+	logger,
+	startMetricsCollection,
+} from "./observability";
+import { registerRoutes } from "./routes";
+import type { EventIngestionService } from "./services/eventIngestion.service";
+import { swaggerSpec } from "./swagger";
+import { gracefulShutdown } from "./utils/shutdown";
 
 dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
 
@@ -26,128 +31,133 @@ let server: ReturnType<typeof app.listen>;
 let ingestionService: EventIngestionService;
 
 function initializeApp(): void {
-  const isDevelopment = process.env.NODE_ENV !== "production";
+	const isDevelopment = process.env.NODE_ENV !== "production";
 
-  const allowedOrigins = isDevelopment
-    ? ["http://localhost:5173", "http://localhost:3000"]
-    : process.env.ALLOWED_ORIGINS?.split(",").map(o => o.trim()) || [];
+	const allowedOrigins = isDevelopment
+		? ["http://localhost:5173", "http://localhost:3000"]
+		: process.env.ALLOWED_ORIGINS?.split(",").map((o) => o.trim()) || [];
 
-  console.log("[CORS] Configuration:", {
-    isDevelopment,
-    allowedOrigins,
-    credentials: true,
-  });
+	console.log("[CORS] Configuration:", {
+		isDevelopment,
+		allowedOrigins,
+		credentials: true,
+	});
 
-  app.use(
-    cors({
-      origin: allowedOrigins,
-      credentials: true,
-    })
-  );
+	app.use(
+		cors({
+			origin: allowedOrigins,
+			credentials: true,
+		}),
+	);
 
-  app.use(express.json({ limit: "10mb" }));
+	app.use(express.json({ limit: "10mb" }));
 
-  // Apply observability and session middleware to all routes EXCEPT /events
-  // This optimizes the high-throughput event ingestion endpoint
-  app.use((req, res, next) => {
-    if (req.path === "/events" && req.method === "POST") {
-      return next();
-    }
-    observabilityMiddleware(req, res, next);
-  });
+	// Apply observability and session middleware to all routes EXCEPT /events
+	// This optimizes the high-throughput event ingestion endpoint
+	app.use((req, res, next) => {
+		if (req.path === "/events" && req.method === "POST") {
+			return next();
+		}
+		observabilityMiddleware(req, res, next);
+	});
 
-  app.use((req, res, next) => {
-    if (req.path === "/events" && req.method === "POST") {
-      return next();
-    }
-    sessionMiddleware(req, res, next);
-  });
+	app.use((req, res, next) => {
+		if (req.path === "/events" && req.method === "POST") {
+			return next();
+		}
+		sessionMiddleware(req, res, next);
+	});
 
-  app.use(
-    "/api-docs",
-    swaggerUi.serve,
-    swaggerUi.setup(swaggerSpec, {
-      customCss: ".swagger-ui .topbar { display: none }",
-      customSiteTitle: "MarTech API Documentation",
-    })
-  );
+	app.use(
+		"/api-docs",
+		swaggerUi.serve,
+		swaggerUi.setup(swaggerSpec, {
+			customCss: ".swagger-ui .topbar { display: none }",
+			customSiteTitle: "MarTech API Documentation",
+		}),
+	);
 
-  app.get("/api-docs.json", (_req, res) => {
-    res.setHeader("Content-Type", "application/json");
-    res.send(swaggerSpec);
-  });
+	app.get("/api-docs.json", (_req, res) => {
+		res.setHeader("Content-Type", "application/json");
+		res.send(swaggerSpec);
+	});
 
-  logger.info("Swagger documentation available at /api-docs");
+	logger.info("Swagger documentation available at /api-docs");
 
-  app.get("/health", (_req, res) => {
-    const bufferSize = ingestionService?.getBufferSize() || 0;
-    const health = {
-      status: "ok",
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-      memory: process.memoryUsage(),
-      database: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
-      bufferSize,
-    };
+	app.get("/health", (_req, res) => {
+		const bufferSize = ingestionService?.getBufferSize() || 0;
+		const health = {
+			status: "ok",
+			timestamp: new Date().toISOString(),
+			uptime: process.uptime(),
+			memory: process.memoryUsage(),
+			database:
+				mongoose.connection.readyState === 1 ? "connected" : "disconnected",
+			bufferSize,
+		};
 
-    bufferSizeGauge.set(bufferSize);
+		bufferSizeGauge.set(bufferSize);
 
-    const statusCode = health.database === "connected" ? 200 : 503;
-    res.status(statusCode).json(health);
-  });
+		const statusCode = health.database === "connected" ? 200 : 503;
+		res.status(statusCode).json(health);
+	});
 
-  ingestionService = registerRoutes(app);
+	ingestionService = registerRoutes(app);
 
-  logger.info("Express application initialized");
+	logger.info("Express application initialized");
 }
 
 async function bootstrap(): Promise<void> {
-  logger.info("Starting application...", {
-    nodeVersion: process.version,
-    environment: process.env.NODE_ENV || "development",
-  });
+	logger.info("Starting application...", {
+		nodeVersion: process.version,
+		environment: process.env.NODE_ENV || "development",
+	});
 
-  try {
-    const mongoUri = process.env.MONGODB_URI || "";
-    await connectDatabase(mongoUri);
+	try {
+		const mongoUri = process.env.MONGODB_URI || "";
+		await connectDatabase(mongoUri);
 
-    initializeApp();
+		initializeApp();
 
-    server = app.listen(PORT, () => {
-      logger.info(`Server listening on port ${PORT}`, {
-        port: PORT,
-        healthCheck: `http://localhost:${PORT}/health`,
-        metrics: `http://localhost:${process.env.PROMETHEUS_PORT || 9464}/metrics`,
-        apiDocs: `http://localhost:${PORT}/api-docs`,
-        allowedOrigins: process.env.ALLOWED_ORIGINS || "Not set",
-      });
+		server = app.listen(PORT, () => {
+			logger.info(`Server listening on port ${PORT}`, {
+				port: PORT,
+				healthCheck: `http://localhost:${PORT}/health`,
+				metrics: `http://localhost:${process.env.PROMETHEUS_PORT || 9464}/metrics`,
+				apiDocs: `http://localhost:${PORT}/api-docs`,
+				allowedOrigins: process.env.ALLOWED_ORIGINS || "Not set",
+			});
 
-      // Start daily analytics export job after server is ready
-      startDailyAnalyticsExportJob();
-    });
+			// Start daily analytics export job after server is ready
+			startDailyAnalyticsExportJob();
+		});
 
-    process.on("SIGTERM", () => gracefulShutdown("SIGTERM", server, ingestionService));
-    process.on("SIGINT", () => gracefulShutdown("SIGINT", server, ingestionService));
+		process.on("SIGTERM", () =>
+			gracefulShutdown("SIGTERM", server, ingestionService),
+		);
+		process.on("SIGINT", () =>
+			gracefulShutdown("SIGINT", server, ingestionService),
+		);
 
-    process.on("uncaughtException", (error) => {
-      logger.error("FATAL: Uncaught exception", {
-        error: error.message,
-        stack: error.stack,
-      });
-      gracefulShutdown("uncaughtException", server, ingestionService);
-    });
+		process.on("uncaughtException", (error) => {
+			logger.error("FATAL: Uncaught exception", {
+				error: error.message,
+				stack: error.stack,
+			});
+			gracefulShutdown("uncaughtException", server, ingestionService);
+		});
 
-    process.on("unhandledRejection", (reason) => {
-      logger.error("FATAL: Unhandled promise rejection", { reason });
-      gracefulShutdown("unhandledRejection", server, ingestionService);
-    });
-  } catch (error: any) {
-    logger.error("FATAL: Application startup failed", {
-      error: error.message,
-      stack: error.stack,
-    });
-    process.exit(1);
-  }
+		process.on("unhandledRejection", (reason) => {
+			logger.error("FATAL: Unhandled promise rejection", { reason });
+			gracefulShutdown("unhandledRejection", server, ingestionService);
+		});
+	} catch (error: any) {
+		logger.error("FATAL: Application startup failed", {
+			error: error.message,
+			stack: error.stack,
+		});
+		process.exit(1);
+	}
 }
 
 // Start the application
