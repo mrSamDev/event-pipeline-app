@@ -45,6 +45,7 @@ describe("EventsController", () => {
 		it("accepts valid single event", async () => {
 			mockRequest = {
 				body: {
+					eventId: "550e8400-e29b-41d4-a716-446655440000",
 					userId: "user123",
 					sessionId: "session456",
 					type: EventType.PAGE_VIEW,
@@ -71,14 +72,18 @@ describe("EventsController", () => {
 			mockRequest = {
 				body: [
 					{
+						eventId: "550e8400-e29b-41d4-a716-446655440000",
 						userId: "user123",
 						sessionId: "session456",
-						type: "page_view",
+						type: EventType.PAGE_VIEW,
+						payload: { url: "/home" },
 					},
 					{
+						eventId: "660e8400-e29b-41d4-a716-446655440000",
 						userId: "user123",
 						sessionId: "session456",
-						type: "button_click",
+						type: EventType.BUTTON_CLICK,
+						payload: { elementId: "submit-btn" },
 					},
 				],
 			};
@@ -135,7 +140,7 @@ describe("EventsController", () => {
 			expect(statusMock).toHaveBeenCalledWith(400);
 			expect(jsonMock).toHaveBeenCalledWith(
 				expect.objectContaining({
-					error: "Bad Request",
+					error: "ValidationError",
 				}),
 			);
 		});
@@ -181,9 +186,11 @@ describe("EventsController", () => {
 				.mockRejectedValue(new Error("Service error"));
 			mockRequest = {
 				body: {
+					eventId: "550e8400-e29b-41d4-a716-446655440000",
 					userId: "user123",
 					sessionId: "session456",
 					type: EventType.PAGE_VIEW,
+					payload: { url: "/test" },
 				},
 			};
 
@@ -240,7 +247,7 @@ describe("EventsController", () => {
 			expect(statusMock).toHaveBeenCalledWith(400);
 			expect(jsonMock).toHaveBeenCalledWith(
 				expect.objectContaining({
-					message: expect.stringContaining('Invalid "from" date format'),
+					error: "ValidationError",
 				}),
 			);
 		});

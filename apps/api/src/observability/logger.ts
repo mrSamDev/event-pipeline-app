@@ -24,11 +24,11 @@ export function createLogger() {
 		new winston.transports.Console({
 			format: winston.format.combine(
 				winston.format.colorize(),
-				winston.format.printf(({ timestamp, level, message, ...meta }) => {
-					const metaStr = Object.keys(meta).length
-						? JSON.stringify(meta, null, 2)
+				winston.format.printf(({ timestamp, level, message, metadata }) => {
+					const metaStr = metadata && Object.keys(metadata).length
+						? `\n${JSON.stringify(metadata, null, 2)}`
 						: "";
-					return `${timestamp} [${level}] ${message} ${metaStr}`;
+					return `${timestamp} [${level}] ${message}${metaStr}`;
 				}),
 			),
 		}),

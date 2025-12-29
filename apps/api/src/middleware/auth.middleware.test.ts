@@ -35,7 +35,7 @@ describe("sessionMiddleware", () => {
 	it("sets user and session when auth succeeds", async () => {
 		const mockSession = {
 			user: { id: "user123", email: "test@test.com" },
-			session: { id: "session456", expiresAt: new Date() },
+			session: { id: "session456", userId: "user123", expiresAt: new Date() },
 		};
 
 		mockAuth.api.getSession.mockResolvedValue(mockSession);
@@ -119,7 +119,7 @@ describe("authMiddleware", () => {
 
 		expect(statusMock).toHaveBeenCalledWith(401);
 		expect(jsonMock).toHaveBeenCalledWith({
-			error: "Unauthorized",
+			error: "AuthenticationError",
 			message: "Authentication required",
 		});
 		expect(mockNext).not.toHaveBeenCalled();
@@ -132,7 +132,7 @@ describe("authMiddleware", () => {
 
 		expect(statusMock).toHaveBeenCalledWith(401);
 		expect(jsonMock).toHaveBeenCalledWith({
-			error: "Unauthorized",
+			error: "AuthenticationError",
 			message: "Authentication required",
 		});
 		expect(mockNext).not.toHaveBeenCalled();

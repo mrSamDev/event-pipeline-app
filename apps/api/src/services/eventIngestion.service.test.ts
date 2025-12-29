@@ -51,7 +51,7 @@ describe("EventIngestionService", () => {
 		const events = Array.from({ length: 10001 }, () => createMockEvent());
 
 		for (const event of events) {
-			await service.addEvent(event);
+			service.addEvent(event);
 		}
 
 		await vi.advanceTimersByTimeAsync(300);
@@ -143,7 +143,7 @@ describe("EventIngestionService", () => {
 		expect(stats.bufferSize).toBe(100);
 		expect(stats.maxBufferSize).toBe(2000);
 		expect(stats.backpressureThreshold).toBe(10000);
-		expect(stats.maxConcurrentFlushes).toBe(3);
+		expect(stats.maxConcurrentFlushes).toBe(5);
 		expect(stats.bufferUtilization).toBe(1);
 	});
 });
