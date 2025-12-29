@@ -1,141 +1,223 @@
-import { EventRepository, NormalizedEvent } from '../repositories/event.repository';
+import {
+	DatabaseError,
+	getErrorMessage,
+	InternalServerError,
+	isError,
+} from "../errors/AppError";
+import { logger } from "../observability/logger";
+import type {
+	EventRepository,
+	NormalizedEvent,
+} from "../repositories/event.repository";
+import { BufferManager } from "./bufferManager";
+import { FlushCoordinator } from "./flushCoordinator";
+
+interface BufferStats {
+	bufferSize: number;
+	activeFlushes: number;
+	maxBufferSize: number;
+	backpressureThreshold: number;
+	maxConcurrentFlushes: number;
+	bufferUtilization: number;
+	totalEventsProcessed: number;
+	totalFlushes: number;
+	failedFlushes: number;
+}
 
 export class EventIngestionService {
-  private buffer: NormalizedEvent[] = [];
-  private flushTimer: NodeJS.Timeout | null = null;
-  private activeFlushes = 0;
+	private buffer: BufferManager;
+	private coordinator: FlushCoordinator;
+	private isShuttingDown = false;
 
-  private readonly maxBufferSize = 2000;
-  private readonly flushIntervalMs = 200;
-  private readonly backpressureThreshold = 10000;
-  private readonly maxConcurrentFlushes = 5;
+	private readonly maxBufferSize = 2000;
+	private readonly flushIntervalMs = 200;
+	private readonly backpressureThreshold = 10000;
+	private readonly maxConcurrentFlushes = 5;
 
-  constructor(private repository: EventRepository) {
-    console.log('[EventIngestionService] Initialized with config:', {
-      maxBufferSize: this.maxBufferSize,
-      flushIntervalMs: this.flushIntervalMs,
-      backpressureThreshold: this.backpressureThreshold,
-      maxConcurrentFlushes: this.maxConcurrentFlushes,
-    });
-  }
+	constructor(private repository: EventRepository) {
+		this.buffer = new BufferManager(
+			this.maxBufferSize,
+			this.backpressureThreshold,
+		);
+		this.coordinator = new FlushCoordinator(
+			this.maxConcurrentFlushes,
+			this.flushIntervalMs,
+		);
 
-  canAcceptEvent(): boolean {
-    return this.buffer.length < this.backpressureThreshold;
-  }
+		logger.info("[EventIngestionService] Initialized with config", {
+			maxBufferSize: this.maxBufferSize,
+			flushIntervalMs: this.flushIntervalMs,
+			backpressureThreshold: this.backpressureThreshold,
+			maxConcurrentFlushes: this.maxConcurrentFlushes,
+		});
+	}
 
-  async addEvent(event: NormalizedEvent): Promise<void> {
-    this.buffer.push(event);
+	canAcceptEvent(): boolean {
+		return this.buffer.canAcceptEvents(this.isShuttingDown);
+	}
 
-    // Reduce logging frequency for better performance
-    if (this.buffer.length % 2000 === 0 && process.env.NODE_ENV !== 'production') {
-      console.log('[EventIngestionService] Buffer size:', this.buffer.length);
-    }
+	async addEvent(event: NormalizedEvent): Promise<void> {
+		if (this.isShuttingDown) {
+			throw new InternalServerError("Service is shutting down", {
+				bufferSize: this.buffer.size,
+			});
+		}
 
-    if (this.buffer.length >= this.maxBufferSize && this.activeFlushes < this.maxConcurrentFlushes) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.log('[EventIngestionService] Size threshold reached, triggering flush');
-      }
-      this.flush().catch((error) => {
-        console.error('[EventIngestionService] Background flush failed:', error);
-      });
-    }
+		this.buffer.add(event);
 
-    this.resetFlushTimer();
-  }
+		if (
+			this.buffer.size % 2000 === 0 &&
+			process.env.NODE_ENV !== "production"
+		) {
+			logger.debug("[EventIngestionService] Buffer size milestone", {
+				bufferSize: this.buffer.size,
+			});
+		}
 
-  private async flush(): Promise<void> {
-    if (this.buffer.length === 0) {
-      return;
-    }
+		if (this.buffer.isOverThreshold && this.coordinator.canFlush()) {
+			if (process.env.NODE_ENV !== "production") {
+				logger.debug(
+					"[EventIngestionService] Size threshold reached, triggering flush",
+					{
+						bufferSize: this.buffer.size,
+					},
+				);
+			}
+			this.scheduleFlush();
+		}
 
-    if (this.activeFlushes >= this.maxConcurrentFlushes) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.log('[EventIngestionService] Max concurrent flushes reached, skipping');
-      }
-      return;
-    }
+		this.resetFlushTimer();
+	}
 
-    this.activeFlushes++;
+	private scheduleFlush(): void {
+		this.flush().catch((error: unknown) => {
+			const errorMessage = getErrorMessage(error);
+			logger.error("[EventIngestionService] Background flush failed", {
+				error: errorMessage,
+				bufferSize: this.buffer.size,
+			});
+		});
+	}
 
-    const batch = this.buffer.splice(0, this.maxBufferSize);
-    const flushStartTime = Date.now();
+	private async flush(): Promise<void> {
+		if (this.buffer.size === 0) {
+			return;
+		}
 
-    try {
-      await this.repository.bulkInsert(batch);
+		if (!this.coordinator.canFlush()) {
+			if (process.env.NODE_ENV !== "production") {
+				logger.debug("[EventIngestionService] Cannot flush, skipping", {
+					stats: this.coordinator.stats,
+				});
+			}
+			return;
+		}
 
-      const flushDuration = Date.now() - flushStartTime;
+		if (!this.coordinator.acquireLock()) {
+			logger.debug(
+				"[EventIngestionService] Flush already in progress, skipping",
+			);
+			return;
+		}
 
-      if (process.env.NODE_ENV !== 'production') {
-        console.log('[EventIngestionService] Flush successful:', {
-          batchSize: batch.length,
-          durationMs: flushDuration,
-          remainingInBuffer: this.buffer.length,
-          activeFlushes: this.activeFlushes,
-        });
-      }
+		try {
+			const batch = this.buffer.extractBatch();
+			const flushStartTime = Date.now();
 
-    } catch (error: any) {
-      console.error('[EventIngestionService] Flush failed, re-queuing batch:', {
-        error: error.message,
-        batchSize: batch.length,
-      });
+			try {
+				await this.repository.bulkInsert(batch);
+				this.coordinator.recordSuccess();
 
-      this.buffer.unshift(...batch);
+				const flushDuration = Date.now() - flushStartTime;
 
-    } finally {
-      this.activeFlushes--;
-      this.resetFlushTimer();
-    }
-  }
+				if (process.env.NODE_ENV !== "production") {
+					logger.info("[EventIngestionService] Flush successful", {
+						batchSize: batch.length,
+						durationMs: flushDuration,
+						remainingInBuffer: this.buffer.size,
+						stats: this.coordinator.stats,
+					});
+				}
+			} catch (error: unknown) {
+				this.coordinator.recordFailure();
 
-  private resetFlushTimer(): void {
-    if (this.flushTimer) {
-      clearTimeout(this.flushTimer);
-    }
+				const errorMessage = getErrorMessage(error);
+				const errorDetails = isError(error) ? { stack: error.stack } : {};
 
-    this.flushTimer = setTimeout(() => {
-      if (this.buffer.length > 0 && this.activeFlushes < this.maxConcurrentFlushes) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.log('[EventIngestionService] Timer expired, triggering flush');
-        }
-        this.flush().catch((error) => {
-          console.error('[EventIngestionService] Timer-triggered flush failed:', error);
-        });
-      }
-    }, this.flushIntervalMs);
-  }
+				logger.error("[EventIngestionService] Flush failed, re-queuing batch", {
+					error: errorMessage,
+					batchSize: batch.length,
+					remainingInBuffer: this.buffer.size,
+					...errorDetails,
+				});
 
-  async forceFlush(): Promise<void> {
-    console.log('[EventIngestionService] Force flush initiated, buffer size:', this.buffer.length);
+				this.buffer.requeueBatch(batch);
 
-    if (this.flushTimer) {
-      clearTimeout(this.flushTimer);
-      this.flushTimer = null;
-    }
+				throw new DatabaseError("Failed to flush events to database", {
+					batchSize: batch.length,
+					error: errorMessage,
+				});
+			}
+		} finally {
+			this.coordinator.releaseLock();
+			this.resetFlushTimer();
+		}
+	}
 
-    while (this.buffer.length > 0) {
-      while (this.activeFlushes >= this.maxConcurrentFlushes) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
+	private resetFlushTimer(): void {
+		this.coordinator.resetTimer(() => {
+			if (this.buffer.size > 0 && this.coordinator.canFlush()) {
+				if (process.env.NODE_ENV !== "production") {
+					logger.debug(
+						"[EventIngestionService] Timer expired, triggering flush",
+						{
+							bufferSize: this.buffer.size,
+						},
+					);
+				}
+				this.scheduleFlush();
+			}
+		}, this.isShuttingDown);
+	}
 
-      await this.flush();
-    }
+	async forceFlush(): Promise<void> {
+		this.isShuttingDown = true;
 
-    console.log('[EventIngestionService] Force flush completed, buffer empty');
-  }
+		logger.info("[EventIngestionService] Force flush initiated", {
+			bufferSize: this.buffer.size,
+		});
 
-  getBufferSize(): number {
-    return this.buffer.length;
-  }
+		this.coordinator.clearTimer();
 
-  getStats() {
-    return {
-      bufferSize: this.buffer.length,
-      activeFlushes: this.activeFlushes,
-      maxBufferSize: this.maxBufferSize,
-      backpressureThreshold: this.backpressureThreshold,
-      maxConcurrentFlushes: this.maxConcurrentFlushes,
-      bufferUtilization: (this.buffer.length / this.backpressureThreshold) * 100,
-    };
-  }
+		while (this.buffer.size > 0) {
+			await this.coordinator.waitForCapacity();
+			await this.flush();
+		}
+
+		await this.coordinator.waitForCompletion();
+
+		logger.info("[EventIngestionService] Force flush completed", {
+			totalEventsProcessed: this.buffer.totalProcessed,
+			stats: this.coordinator.stats,
+		});
+	}
+
+	getBufferSize(): number {
+		return this.buffer.size;
+	}
+
+	getStats(): BufferStats {
+		const coordStats = this.coordinator.stats;
+		return {
+			bufferSize: this.buffer.size,
+			activeFlushes: coordStats.activeFlushes,
+			maxBufferSize: this.maxBufferSize,
+			backpressureThreshold: this.backpressureThreshold,
+			maxConcurrentFlushes: this.maxConcurrentFlushes,
+			bufferUtilization: this.buffer.getUtilization(),
+			totalEventsProcessed: this.buffer.totalProcessed,
+			totalFlushes: coordStats.totalFlushes,
+			failedFlushes: coordStats.failedFlushes,
+		};
+	}
 }

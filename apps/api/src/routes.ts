@@ -1,9 +1,9 @@
-import { Express } from "express";
+import type { Express } from "express";
+import { AuthController } from "./controllers/auth.controller";
+import { EventsController } from "./controllers/events.controller";
+import { authMiddleware } from "./middleware/auth.middleware";
 import { EventRepository } from "./repositories/event.repository";
 import { EventIngestionService } from "./services/eventIngestion.service";
-import { EventsController } from "./controllers/events.controller";
-import { AuthController } from "./controllers/auth.controller";
-import { authMiddleware } from "./middleware/auth.middleware";
 
 export function registerRoutes(app: Express): EventIngestionService {
 	const repository = new EventRepository();

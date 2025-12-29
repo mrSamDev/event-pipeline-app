@@ -1,157 +1,136 @@
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
 import { getAuth } from "../auth";
+import { getErrorMessage, isError } from "../errors/AppError";
+import { logger } from "../observability/logger";
+import { convertToWebRequest } from "./helpers/requestConverter";
 
-/**
- * Auth Controller
- *
- * Handles authentication endpoints using Better Auth.
- * Better Auth provides built-in handlers for common auth operations,
- * so we just need to proxy requests to the Better Auth handler.
- */
 export class AuthController {
-  /**
-   * Handle all Better Auth requests
-   * Better Auth provides a single handler that manages all auth routes
-   *
-   * Routes handled by Better Auth:
-   * - POST /api/auth/sign-up/email - Register with email/password
-   * - POST /api/auth/sign-in/email - Login with email/password
-   * - POST /api/auth/sign-out - Logout
-   * - GET /api/auth/get-session - Get current session
-   * - POST /api/auth/forget-password - Request password reset
-   * - POST /api/auth/reset-password - Reset password with token
-   * - POST /api/auth/verify-email - Verify email address
-   * - And many more...
-   */
-  async handleAuth(req: Request, res: Response): Promise<void> {
-    try {
-      const auth = getAuth();
+	async handleAuth(req: Request, res: Response): Promise<void> {
+		try {
+			const auth = getAuth();
+			const webRequest = convertToWebRequest(req);
 
-      // Better Auth handler expects a Web Request object
-      // Convert Express request to Web Request
-      // Use x-forwarded-proto to detect if request came through HTTPS (from nginx/ALB)
-      const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
-      const url = new URL(req.url, `${protocol}://${req.headers.host}`);
+			logger.debug("[Auth] Request details", {
+				method: req.method,
+				path: req.url,
+				origin: req.headers.origin,
+			});
 
-      console.log("[Auth] Request details:", {
-        method: req.method,
-        path: req.url,
-        protocol,
-        fullUrl: url.toString(),
-        origin: req.headers.origin,
-        host: req.headers.host,
-        cookies: req.headers.cookie,
-        forwardedProto: req.headers['x-forwarded-proto'],
-      });
+			const response = await auth.handler(webRequest);
 
-      const webRequest = new globalThis.Request(url, {
-        method: req.method,
-        headers: req.headers as any,
-        body: req.method !== "GET" && req.method !== "HEAD" ? JSON.stringify(req.body) : undefined,
-      });
+			res.status(response.status);
 
-      // Better Auth handler returns a Response object
-      const response = await auth.handler(webRequest);
+			response.headers.forEach((value, key) => {
+				res.setHeader(key, value);
+				if (key.toLowerCase() === "set-cookie") {
+					logger.debug("[Auth] Setting cookie", {
+						cookieValue: value.substring(0, 50),
+					});
+				}
+			});
 
-      console.log("[Auth] Response details:", {
-        status: response.status,
-        headers: Object.fromEntries(response.headers.entries()),
-      });
+			const body = await response.text();
 
-      // Set status code
-      res.status(response.status);
+			if (req.url.includes("session") || req.url.includes("sign-in")) {
+				logger.debug("[Auth] Response body preview", {
+					bodyPreview: body.substring(0, 200),
+				});
+			}
 
-      // Set headers
-      response.headers.forEach((value, key) => {
-        res.setHeader(key, value);
-        if (key.toLowerCase() === 'set-cookie') {
-          console.log("[Auth] Setting cookie:", value);
-        }
-      });
+			res.send(body);
+		} catch (error: unknown) {
+			const errorMessage = getErrorMessage(error);
+			const errorDetails = isError(error) ? { stack: error.stack } : {};
 
-      // Send body
-      const body = await response.text();
+			logger.error("[Auth] Error handling auth request", {
+				error: errorMessage,
+				method: req.method,
+				url: req.url,
+				...errorDetails,
+			});
 
-      // Log response body for session endpoints
-      if (req.url.includes('session') || req.url.includes('sign-in')) {
-        console.log("[Auth] Response body:", body.substring(0, 200));
-      }
+			res.status(500).json({
+				error: "Internal Server Error",
+				message: "An error occurred during authentication",
+			});
+		}
+	}
 
-      res.send(body);
-    } catch (error: any) {
-      console.error("[Auth] Error handling auth request:", error);
-      res.status(500).json({
-        error: "Internal server error",
-        message: error.message,
-      });
-    }
-  }
+	async getSession(req: Request, res: Response): Promise<void> {
+		try {
+			const auth = getAuth();
 
-  /**
-   * Get current user session
-   * Convenience endpoint to check if user is authenticated
-   */
-  async getSession(req: Request, res: Response): Promise<void> {
-    try {
-      const auth = getAuth();
+			logger.debug("[Auth] getSession - Request headers", {
+				hasCookie: !!req.headers.cookie,
+				hasAuthorization: !!req.headers.authorization,
+				origin: req.headers.origin,
+			});
 
-      console.log("[Auth] getSession - Request headers:", {
-        cookie: req.headers.cookie,
-        authorization: req.headers.authorization,
-        origin: req.headers.origin,
-      });
+			const headersObj: Record<string, string> = {};
+			for (const [key, value] of Object.entries(req.headers)) {
+				if (value !== undefined) {
+					headersObj[key] = Array.isArray(value) ? value.join(", ") : value;
+				}
+			}
 
-      // Better Auth provides a session object from the request
-      const session = await auth.api.getSession({
-        headers: req.headers as any,
-      });
+			const session = await auth.api.getSession({
+				headers: headersObj,
+			});
 
-      console.log("[Auth] getSession - Session result:", {
-        hasSession: !!session,
-        userId: session?.user?.id,
-        sessionId: session?.session?.id,
-      });
+			logger.debug("[Auth] getSession - Session result", {
+				hasSession: !!session,
+				userId: session?.user?.id,
+				sessionId: session?.session?.id,
+			});
 
-      if (!session) {
-        res.status(401).json({
-          error: "Unauthorized",
-          message: "No active session",
-        });
-        return;
-      }
+			if (!session) {
+				res.status(401).json({
+					error: "Unauthorized",
+					message: "No active session",
+				});
+				return;
+			}
 
-      res.status(200).json({
-        session: session.session,
-        user: session.user,
-      });
-    } catch (error: any) {
-      console.error("[Auth] Error getting session:", error);
-      res.status(500).json({
-        error: "Internal server error",
-        message: error.message,
-      });
-    }
-  }
+			res.status(200).json({
+				session: session.session,
+				user: session.user,
+			});
+		} catch (error: unknown) {
+			const errorMessage = getErrorMessage(error);
+			const errorDetails = isError(error) ? { stack: error.stack } : {};
 
-  /**
-   * List all users (for testing/admin purposes)
-   * WARNING: This should be protected with proper authorization in production
-   */
-  async listUsers(req: Request, res: Response): Promise<void> {
-    try {
-      // Better Auth doesn't expose a built-in listUsers API
-      // You would need to query the MongoDB users collection directly
-      // For now, return a message indicating this needs custom implementation
-      res.status(501).json({
-        error: "Not Implemented",
-        message: "User listing requires direct database access. Implement using MongoDB query if needed.",
-      });
-    } catch (error: any) {
-      console.error("[Auth] Error listing users:", error);
-      res.status(500).json({
-        error: "Internal server error",
-        message: error.message,
-      });
-    }
-  }
+			logger.error("[Auth] Error getting session", {
+				error: errorMessage,
+				...errorDetails,
+			});
+
+			res.status(500).json({
+				error: "Internal Server Error",
+				message: "An error occurred while retrieving session",
+			});
+		}
+	}
+
+	async listUsers(_req: Request, res: Response): Promise<void> {
+		try {
+			res.status(501).json({
+				error: "Not Implemented",
+				message:
+					"User listing requires direct database access. Implement using MongoDB query if needed.",
+			});
+		} catch (error: unknown) {
+			const errorMessage = getErrorMessage(error);
+			const errorDetails = isError(error) ? { stack: error.stack } : {};
+
+			logger.error("[Auth] Error listing users", {
+				error: errorMessage,
+				...errorDetails,
+			});
+
+			res.status(500).json({
+				error: "Internal Server Error",
+				message: "An error occurred while listing users",
+			});
+		}
+	}
 }

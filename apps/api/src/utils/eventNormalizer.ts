@@ -1,16 +1,20 @@
-import { randomUUID } from 'crypto';
-import { EventType } from '@martech/types';
-import { NormalizedEvent } from '../repositories/event.repository';
-import { RawEvent } from '../validators/event.validator';
+import type { NormalizedEvent } from "../repositories/event.repository";
+import type { ValidatedRawEvent } from "../validators/event.validator";
 
-export function normalizeEvent(rawEvent: RawEvent): NormalizedEvent {
-  return {
-    eventId: randomUUID(),
-    userId: rawEvent.userId,
-    sessionId: rawEvent.sessionId,
-    type: rawEvent.type as EventType,
-    payload: rawEvent.payload || {},
-    occurredAt: rawEvent.occurredAt ? new Date(rawEvent.occurredAt) : new Date(),
-    receivedAt: new Date(),
-  };
+/**
+ * Normalize a validated raw event into the internal event format
+ * This function is now mostly a passthrough since validation handles normalization
+ */
+export function normalizeEvent(
+	validatedEvent: ValidatedRawEvent,
+): NormalizedEvent {
+	return {
+		eventId: validatedEvent.eventId,
+		userId: validatedEvent.userId,
+		sessionId: validatedEvent.sessionId,
+		type: validatedEvent.type,
+		payload: validatedEvent.payload as Record<string, unknown>,
+		occurredAt: validatedEvent.occurredAt,
+		receivedAt: new Date(),
+	};
 }
