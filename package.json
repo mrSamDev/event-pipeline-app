@@ -9,10 +9,10 @@
 		"build": "pnpm -r build",
 		"test": "pnpm -r test",
 		"lint": "biome lint .",
-		"lint:fix": "biome lint . --apply",
+		"lint:fix": "biome lint . --write",
 		"format": "biome format . --write",
 		"check": "biome check .",
-		"check:fix": "biome check . --apply"
+		"check:fix": "biome check . --write"
 	},
 	"keywords": [],
 	"author": "",
