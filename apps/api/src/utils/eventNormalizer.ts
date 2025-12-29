@@ -13,7 +13,7 @@ export function normalizeEvent(
 		userId: validatedEvent.userId,
 		sessionId: validatedEvent.sessionId,
 		type: validatedEvent.type,
-		payload: validatedEvent.payload,
+		payload: validatedEvent.payload as Record<string, unknown>,
 		occurredAt: validatedEvent.occurredAt,
 		receivedAt: new Date(),
 	};

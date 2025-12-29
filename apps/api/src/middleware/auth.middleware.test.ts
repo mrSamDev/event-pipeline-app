@@ -11,7 +11,7 @@ describe("sessionMiddleware", () => {
 	let mockRequest: Partial<Request>;
 	let mockResponse: Partial<Response>;
 	let mockNext: NextFunction;
-	let mockAuth: { api: { getSession: ReturnType<typeof vi.fn> } };
+	let mockGetSession: ReturnType<typeof vi.fn>;
 
 	beforeEach(() => {
 		vi.spyOn(console, "log").mockImplementation(() => {});
@@ -23,11 +23,12 @@ describe("sessionMiddleware", () => {
 		mockResponse = {};
 		mockNext = vi.fn();
 
-		mockAuth = {
+		mockGetSession = vi.fn();
+		const mockAuth = {
 			api: {
-				getSession: vi.fn(),
+				getSession: mockGetSession,
 			},
-		};
+		} as unknown as ReturnType<typeof authModule.getAuth>;
 
 		vi.mocked(authModule.getAuth).mockReturnValue(mockAuth);
 	});
@@ -38,7 +39,7 @@ describe("sessionMiddleware", () => {
 			session: { id: "session456", userId: "user123", expiresAt: new Date() },
 		};
 
-		mockAuth.api.getSession.mockResolvedValue(mockSession);
+		mockGetSession.mockResolvedValue(mockSession);
 
 		await sessionMiddleware(
 			mockRequest as Request,
@@ -52,7 +53,7 @@ describe("sessionMiddleware", () => {
 	});
 
 	it("sets user and session to null when no session", async () => {
-		mockAuth.api.getSession.mockResolvedValue(null);
+		mockGetSession.mockResolvedValue(null);
 
 		await sessionMiddleware(
 			mockRequest as Request,
@@ -66,7 +67,7 @@ describe("sessionMiddleware", () => {
 	});
 
 	it("handles auth errors and sets user/session to null", async () => {
-		mockAuth.api.getSession.mockRejectedValue(new Error("Auth failed"));
+		mockGetSession.mockRejectedValue(new Error("Auth failed"));
 
 		await sessionMiddleware(
 			mockRequest as Request,
