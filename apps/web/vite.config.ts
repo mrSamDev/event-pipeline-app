@@ -19,7 +19,15 @@ function injectVersionPlugin(): Plugin {
 
 // https://vite.dev/config/
 export default defineConfig({
-	plugins: [react(), tailwindcss(), injectVersionPlugin()],
+	plugins: [
+		react({
+			babel: {
+				plugins: [["babel-plugin-react-compiler", {}]],
+			},
+		}),
+		tailwindcss(),
+		injectVersionPlugin(),
+	],
 	// Load env file from root directory
 	envDir: path.resolve(__dirname, "../../"),
 	resolve: {
