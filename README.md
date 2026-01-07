@@ -84,7 +84,7 @@ Based on the implementation described in **What’s Built**:
 │   (Backend)     │      ┌──────────────┐
 │                 │◄────►│   MongoDB    │
 │  Event Buffer   │      │              │
-│  + PM2 Cluster  │      └──────────────┘
+│  + PM2          │      └──────────────┘
 └────────┬────────┘
          │
          ▼
@@ -119,7 +119,7 @@ Backend/API (L5):
 
 - OpenAPI 3.0 spec, Swagger UI
 - Express.js, layered architecture
-- AWS EC2, Nginx, SSL/TLS
+- AWS EC2, Nginx, SSL/TLS, PM2
 - Vitest, 5 test files
 - Daily export job, S3 at 10 UTC
 
@@ -189,8 +189,6 @@ make deploy          # Deploy/update stack
 make delete          # Delete stack (asks first)
 make status          # Check stack status
 make describe        # Stack resources
-make validate        # Validate template
-make events          # Stack events
 ```
 
 ## API
@@ -387,9 +385,9 @@ CloudWatch collects system metrics (CPU, memory, disk), application logs (PM2, N
 Buffer size: 2,000 events
 Flush interval: 200ms
 Backpressure threshold: 10,000 events
-Max concurrent flushes: 3
+Max concurrent flushes: 5
 Database indexes: Compound index on userId + occurredAt
-Connection pool: 10 connections
+Connection pool: 10-50 connections (min-max)
 Target latency: <100ms p99
 
 ## Cost
@@ -410,7 +408,7 @@ martech/
 │   │   │   ├── repositories/  # Data access
 │   │   │   ├── models/        # Mongoose schemas
 │   │   │   ├── middleware/    # Express middleware
-│   │   │   ├── validators/    # Zod schemas
+│   │   │   ├── validators/    # Custom TypeScript validators
 │   │   │   ├── observability/ # Telemetry
 │   │   │   └── jobs/          # Scheduled jobs
 │   │   └── tests/
@@ -418,6 +416,7 @@ martech/
 │   └── web/              # Frontend React app
 │       ├── src/
 │       │   ├── pages/         # Page components
+│       │   ├── features/      # Feature modules (auth, analytics, journey, users)
 │       │   ├── components/    # Reusable components
 │       │   ├── lib/           # API layer + utilities
 │       │   └── hooks/         # React hooks
@@ -461,9 +460,9 @@ Write-optimized schema: Append-only event storage. No updates. Compound index on
 
 ### Infrastructure
 
-Long-running service: EC2 with PM2 process manager. Auto-restart on crashes. Cluster mode ready for multi-core.
+Long-running service: EC2 with PM2 process manager. Auto-restart on crashes.
 
-Horizontal scalability: Stateless API. No in-memory session storage. Load balancer support ready. MongoDB connection pooling (10 connections). Each instance handles independent traffic.
+Horizontal scalability: Stateless API. No in-memory session storage. Load balancer support ready. MongoDB connection pooling (10-50 connections). Each instance handles independent traffic. PM2 cluster mode ready for multi-core scaling.
 
 Monitoring: CloudWatch + Grafana dashboards. Buffer size and flush rate tracking.
 
@@ -493,8 +492,8 @@ export const options = {
 
 The architecture supports horizontal scaling through:
 - Stateless API design (multiple instances can run behind a load balancer)
-- PM2 cluster mode for multi-core utilization
-- MongoDB connection pooling
+- PM2 cluster mode capability for multi-core utilization
+- MongoDB connection pooling (10-50 connections)
 - No instance-specific in-memory state
 
 When scaled up to EC2 instances with more resources, the system can handle proportionally higher throughput.

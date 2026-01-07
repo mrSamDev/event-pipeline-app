@@ -43,7 +43,7 @@ importers:
         version: 1.38.0
       better-auth:
         specifier: ^1.4.7
-        version: 1.4.7(mongodb@7.0.0(snappy@7.3.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vitest@4.0.15)
+        version: 1.4.7(mongodb@7.0.0(snappy@7.3.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vitest@4.0.15(@opentelemetry/api@1.9.0)(@types/node@25.0.2)(@vitest/ui@4.0.15)(jiti@2.6.1)(lightningcss@1.30.2))
       cors:
         specifier: ^2.8.5
         version: 2.8.5
@@ -131,7 +131,7 @@ importers:
         version: 8.21.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       better-auth:
         specifier: ^1.4.7
-        version: 1.4.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vitest@4.0.15)
+        version: 1.4.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vitest@4.0.15(@types/node@24.10.4)(jiti@2.6.1)(lightningcss@1.30.2))
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -178,6 +178,9 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^5.1.1
         version: 5.1.2(vite@7.2.7(@types/node@24.10.4)(jiti@2.6.1)(lightningcss@1.30.2))
+      babel-plugin-react-compiler:
+        specifier: ^19.1.0-rc.3
+        version: 19.1.0-rc.1-rc-af1b7da-20250421
       eslint:
         specifier: ^9.39.1
         version: 9.39.2(jiti@2.6.1)
@@ -2305,6 +2308,10 @@ packages:
 
   asynckit@0.4.0:
     resolution: {integrity: sha512-Oei9OH4tRh0YqU3GxhX79dM/mwVgvbZJaSNaRk+bshkj0S5cfHcgYakreBjrHwatXKbz+IoIdYLxrKim2MjW0Q==}
+
+  babel-plugin-react-compiler@19.1.0-rc.1-rc-af1b7da-20250421:
+    resolution: {integrity: sha512-E3kaokBhWDLf7ZD8fuYjYn0ZJHYZ+3EHtAWCdX2hl4lpu1z9S/Xr99sxhx2bTCVB41oIesz9FtM8f4INsrZaOw==}
+    deprecated: Wrong version name was published
 
   balanced-match@1.0.2:
     resolution: {integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==}
@@ -6944,11 +6951,15 @@ snapshots:
 
   asynckit@0.4.0: {}
 
+  babel-plugin-react-compiler@19.1.0-rc.1-rc-af1b7da-20250421:
+    dependencies:
+      '@babel/types': 7.28.5
+
   balanced-match@1.0.2: {}
 
   baseline-browser-mapping@2.9.7: {}
 
-  better-auth@1.4.7(mongodb@7.0.0(snappy@7.3.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vitest@4.0.15):
+  better-auth@1.4.7(mongodb@7.0.0(snappy@7.3.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vitest@4.0.15(@opentelemetry/api@1.9.0)(@types/node@25.0.2)(@vitest/ui@4.0.15)(jiti@2.6.1)(lightningcss@1.30.2)):
     dependencies:
       '@better-auth/core': 1.4.7(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.5(zod@4.2.0))(jose@6.1.3)(kysely@0.28.9)(nanostores@1.1.0)
       '@better-auth/telemetry': 1.4.7(@better-auth/core@1.4.7(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.5(zod@4.2.0))(jose@6.1.3)(kysely@0.28.9)(nanostores@1.1.0))
@@ -6968,7 +6979,7 @@ snapshots:
       react-dom: 19.2.3(react@19.2.3)
       vitest: 4.0.15(@opentelemetry/api@1.9.0)(@types/node@25.0.2)(@vitest/ui@4.0.15)(jiti@2.6.1)(lightningcss@1.30.2)
 
-  better-auth@1.4.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vitest@4.0.15):
+  better-auth@1.4.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vitest@4.0.15(@types/node@24.10.4)(jiti@2.6.1)(lightningcss@1.30.2)):
     dependencies:
       '@better-auth/core': 1.4.7(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.5(zod@4.2.0))(jose@6.1.3)(kysely@0.28.9)(nanostores@1.1.0)
       '@better-auth/telemetry': 1.4.7(@better-auth/core@1.4.7(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.5(zod@4.2.0))(jose@6.1.3)(kysely@0.28.9)(nanostores@1.1.0))
@@ -6985,7 +6996,7 @@ snapshots:
     optionalDependencies:
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
-      vitest: 4.0.15(@opentelemetry/api@1.9.0)(@types/node@24.10.4)(@vitest/ui@4.0.15)(jiti@2.6.1)(lightningcss@1.30.2)
+      vitest: 4.0.15(@types/node@24.10.4)(jiti@2.6.1)(lightningcss@1.30.2)
 
   better-call@1.1.5(zod@4.2.0):
     dependencies:
@@ -8525,46 +8536,6 @@ snapshots:
       jiti: 2.6.1
       lightningcss: 1.30.2
 
-  vitest@4.0.15(@opentelemetry/api@1.9.0)(@types/node@24.10.4)(@vitest/ui@4.0.15)(jiti@2.6.1)(lightningcss@1.30.2):
-    dependencies:
-      '@vitest/expect': 4.0.15
-      '@vitest/mocker': 4.0.15(vite@7.2.7(@types/node@24.10.4)(jiti@2.6.1)(lightningcss@1.30.2))
-      '@vitest/pretty-format': 4.0.15
-      '@vitest/runner': 4.0.15
-      '@vitest/snapshot': 4.0.15
-      '@vitest/spy': 4.0.15
-      '@vitest/utils': 4.0.15
-      es-module-lexer: 1.7.0
-      expect-type: 1.3.0
-      magic-string: 0.30.21
-      obug: 2.1.1
-      pathe: 2.0.3
-      picomatch: 4.0.3
-      std-env: 3.10.0
-      tinybench: 2.9.0
-      tinyexec: 1.0.2
-      tinyglobby: 0.2.15
-      tinyrainbow: 3.0.3
-      vite: 7.2.7(@types/node@24.10.4)(jiti@2.6.1)(lightningcss@1.30.2)
-      why-is-node-running: 2.3.0
-    optionalDependencies:
-      '@opentelemetry/api': 1.9.0
-      '@types/node': 24.10.4
-      '@vitest/ui': 4.0.15(vitest@4.0.15)
-    transitivePeerDependencies:
-      - jiti
-      - less
-      - lightningcss
-      - msw
-      - sass
-      - sass-embedded
-      - stylus
-      - sugarss
-      - terser
-      - tsx
-      - yaml
-    optional: true
-
   vitest@4.0.15(@opentelemetry/api@1.9.0)(@types/node@25.0.2)(@vitest/ui@4.0.15)(jiti@2.6.1)(lightningcss@1.30.2):
     dependencies:
       '@vitest/expect': 4.0.15
@@ -8603,6 +8574,44 @@ snapshots:
       - terser
       - tsx
       - yaml
+
+  vitest@4.0.15(@types/node@24.10.4)(jiti@2.6.1)(lightningcss@1.30.2):
+    dependencies:
+      '@vitest/expect': 4.0.15
+      '@vitest/mocker': 4.0.15(vite@7.2.7(@types/node@24.10.4)(jiti@2.6.1)(lightningcss@1.30.2))
+      '@vitest/pretty-format': 4.0.15
+      '@vitest/runner': 4.0.15
+      '@vitest/snapshot': 4.0.15
+      '@vitest/spy': 4.0.15
+      '@vitest/utils': 4.0.15
+      es-module-lexer: 1.7.0
+      expect-type: 1.3.0
+      magic-string: 0.30.21
+      obug: 2.1.1
+      pathe: 2.0.3
+      picomatch: 4.0.3
+      std-env: 3.10.0
+      tinybench: 2.9.0
+      tinyexec: 1.0.2
+      tinyglobby: 0.2.15
+      tinyrainbow: 3.0.3
+      vite: 7.2.7(@types/node@24.10.4)(jiti@2.6.1)(lightningcss@1.30.2)
+      why-is-node-running: 2.3.0
+    optionalDependencies:
+      '@types/node': 24.10.4
+    transitivePeerDependencies:
+      - jiti
+      - less
+      - lightningcss
+      - msw
+      - sass
+      - sass-embedded
+      - stylus
+      - sugarss
+      - terser
+      - tsx
+      - yaml
+    optional: true
 
   webidl-conversions@3.0.1: {}
 
