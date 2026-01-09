@@ -307,13 +307,15 @@ Scales to 100+ event types without refactoring.
 
 ### Event Ingestion
 
-Buffer-based batching. Events collect in memory, flush to MongoDB in batches. Two triggers: 200ms timer or 2,000 events.
+Buffer-based batching. Events collect in a mutable in-memory queue, flush to MongoDB in batches. Two triggers: 200ms timer or 2,000 events.
 
 Gets you 10,000 events/sec capacity, reduced database load, backpressure handling when the buffer hits 10,000.
 
 If the buffer reaches capacity, the API applies backpressure by rejecting new events with 429 until the buffer drains.
 
-Code: [apps/api/src/services/eventIngestion.service.ts](apps/api/src/services/eventIngestion.service.ts)
+Queue implementation uses native array operations (push/splice) for O(1) adds and O(batchSize) batch extraction. No array copying on every operation.
+
+Code: [apps/api/src/services/eventIngestion.service.ts](apps/api/src/services/eventIngestion.service.ts), [apps/api/src/services/bufferManager.ts](apps/api/src/services/bufferManager.ts)
 
 ### Repository Pattern
 
@@ -452,7 +454,7 @@ Key implementation files:
 
 ### Design
 
-In-memory buffering: Events collect in memory before database writes. Dual-trigger flushing (time-based + size-based). Prevents database overload during spikes.
+In-memory buffering: Events collect in a mutable queue before database writes. Dual-trigger flushing (time-based + size-based). Prevents database overload during spikes. Uses native array operations for O(1) event additions and efficient batch extraction.
 
 Batch database writes: Bulk inserts with MongoDB `insertMany()`. Up to 2,000 events per batch. Ordered inserts, duplicate handling.
 

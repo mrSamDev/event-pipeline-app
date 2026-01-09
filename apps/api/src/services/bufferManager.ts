@@ -1,7 +1,7 @@
 import type { NormalizedEvent } from "../repositories/event.repository";
 
 export class BufferManager {
-	private buffer: ReadonlyArray<NormalizedEvent> = [];
+	private buffer: NormalizedEvent[] = [];
 	private readonly maxBufferSize: number;
 	private readonly backpressureThreshold: number;
 	private totalEventsProcessed = 0;
@@ -12,19 +12,17 @@ export class BufferManager {
 	}
 
 	add(event: NormalizedEvent): void {
-		this.buffer = [...this.buffer, event];
+		this.buffer.push(event);
 		this.totalEventsProcessed++;
 	}
 
 	extractBatch(): NormalizedEvent[] {
 		const batchSize = Math.min(this.maxBufferSize, this.buffer.length);
-		const batch = this.buffer.slice(0, batchSize);
-		this.buffer = this.buffer.slice(batchSize);
-		return Array.from(batch);
+		return this.buffer.splice(0, batchSize);
 	}
 
 	requeueBatch(batch: NormalizedEvent[]): void {
-		this.buffer = [...batch, ...this.buffer];
+		this.buffer.unshift(...batch);
 	}
 
 	get size(): number {
