@@ -9,51 +9,29 @@ export function validateSessionStartPayload(
 		throw new ValidationError("Payload must be an object");
 	}
 
-	const validated: SessionStartPayload = {};
-
-	if (payload.deviceType !== undefined) {
-		if (!isString(payload.deviceType)) {
-			throw new ValidationError("SessionStart deviceType must be a string");
-		}
-		validated.deviceType = payload.deviceType;
+	if (payload.deviceType !== undefined && !isString(payload.deviceType)) {
+		throw new ValidationError("SessionStart deviceType must be a string");
 	}
 
-	if (payload.browser !== undefined) {
-		if (!isString(payload.browser)) {
-			throw new ValidationError("SessionStart browser must be a string");
-		}
-		validated.browser = payload.browser;
+	if (payload.browser !== undefined && !isString(payload.browser)) {
+		throw new ValidationError("SessionStart browser must be a string");
 	}
 
-	if (payload.os !== undefined) {
-		if (!isString(payload.os)) {
-			throw new ValidationError("SessionStart os must be a string");
-		}
-		validated.os = payload.os;
+	if (payload.os !== undefined && !isString(payload.os)) {
+		throw new ValidationError("SessionStart os must be a string");
 	}
 
-	if (payload.screenResolution !== undefined) {
-		if (!isString(payload.screenResolution)) {
-			throw new ValidationError(
-				"SessionStart screenResolution must be a string",
-			);
-		}
-		validated.screenResolution = payload.screenResolution;
+	if (payload.screenResolution !== undefined && !isString(payload.screenResolution)) {
+		throw new ValidationError("SessionStart screenResolution must be a string");
 	}
 
-	if (payload.timezone !== undefined) {
-		if (!isString(payload.timezone)) {
-			throw new ValidationError("SessionStart timezone must be a string");
-		}
-		validated.timezone = payload.timezone;
+	if (payload.timezone !== undefined && !isString(payload.timezone)) {
+		throw new ValidationError("SessionStart timezone must be a string");
 	}
 
-	if (payload.language !== undefined) {
-		if (!isString(payload.language)) {
-			throw new ValidationError("SessionStart language must be a string");
-		}
-		validated.language = payload.language;
+	if (payload.language !== undefined && !isString(payload.language)) {
+		throw new ValidationError("SessionStart language must be a string");
 	}
 
-	return validated;
+	return payload as SessionStartPayload;
 }

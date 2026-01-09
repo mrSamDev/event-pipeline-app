@@ -77,9 +77,11 @@ eventSchema.index({ userId: 1, occurredAt: -1 });
 // Uncomment if you want automatic deletion of old events
 // eventSchema.index({ receivedAt: 1 }, { expireAfterSeconds: 7776000 });
 
-// Optional: Analytics index for event-type based queries
-// Only add if you need to query by event type frequently
-// eventSchema.index({ type: 1, occurredAt: -1 });
+// Analytics index for event-type based queries
+eventSchema.index({ type: 1, occurredAt: -1 });
+
+// Index for date-based analytics aggregations
+eventSchema.index({ occurredAt: 1 });
 
 // Create and export the model
 export const Event = mongoose.model<IEventDocument>("Event", eventSchema);

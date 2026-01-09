@@ -52,6 +52,23 @@ function initializeApp(): void {
 
 	app.use(express.json({ limit: "10mb" }));
 
+	app.use((req, res, next) => {
+		if (req.path === "/events" && req.method === "POST") {
+			const contentLength = Number.parseInt(req.get("content-length") || "0", 10);
+			const maxSize = 1024 * 1024;
+			if (contentLength > maxSize) {
+				res.status(413).json({
+					error: "PayloadTooLarge",
+					message: "Payload size exceeds maximum allowed size of 1MB",
+					receivedSize: contentLength,
+					maxSize,
+				});
+				return;
+			}
+		}
+		next();
+	});
+
 	// Apply observability and session middleware to all routes EXCEPT /events
 	// This optimizes the high-throughput event ingestion endpoint
 	app.use((req, res, next) => {
