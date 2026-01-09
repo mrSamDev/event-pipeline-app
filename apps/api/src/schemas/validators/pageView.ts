@@ -8,26 +8,16 @@ export function validatePageViewPayload(payload: unknown): PageViewPayload {
 	}
 
 	if (!isString(payload.url)) {
-		throw new ValidationError(
-			"PageView payload must contain a valid url string",
-		);
+		throw new ValidationError("PageView requires url string");
 	}
 
-	const validated: PageViewPayload = { url: payload.url };
-
-	if (payload.title !== undefined) {
-		if (!isString(payload.title)) {
-			throw new ValidationError("PageView title must be a string");
-		}
-		validated.title = payload.title;
+	if (payload.title !== undefined && !isString(payload.title)) {
+		throw new ValidationError("PageView title must be a string");
 	}
 
-	if (payload.referrer !== undefined) {
-		if (!isString(payload.referrer)) {
-			throw new ValidationError("PageView referrer must be a string");
-		}
-		validated.referrer = payload.referrer;
+	if (payload.referrer !== undefined && !isString(payload.referrer)) {
+		throw new ValidationError("PageView referrer must be a string");
 	}
 
-	return validated;
+	return payload as PageViewPayload;
 }

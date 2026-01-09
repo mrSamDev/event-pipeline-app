@@ -12,9 +12,7 @@ export function validatePurchasePayload(payload: unknown): PurchasePayload {
 	}
 
 	if (!isString(payload.orderId)) {
-		throw new ValidationError(
-			"Purchase payload must contain a valid orderId string",
-		);
+		throw new ValidationError("Purchase requires orderId string");
 	}
 
 	if (!isNumber(payload.revenue) || payload.revenue < 0) {
@@ -22,60 +20,36 @@ export function validatePurchasePayload(payload: unknown): PurchasePayload {
 	}
 
 	if (!isString(payload.currency) || payload.currency.length !== 3) {
-		throw new ValidationError(
-			"Purchase currency must be a valid 3-letter currency code",
-		);
+		throw new ValidationError("Purchase currency must be a 3-letter code");
 	}
 
 	if (!isArray(payload.items) || payload.items.length === 0) {
 		throw new ValidationError("Purchase items must be a non-empty array");
 	}
 
-	const items = payload.items.map((item, index) => {
+	payload.items.forEach((item, index) => {
 		if (!isObject(item)) {
-			throw new ValidationError(
-				`Purchase item at index ${index} must be an object`,
-			);
+			throw new ValidationError(`Purchase item at index ${index} must be an object`);
 		}
 
 		if (!isString(item.productId)) {
-			throw new ValidationError(
-				`Purchase item at index ${index} must have a valid productId`,
-			);
+			throw new ValidationError(`Purchase item at index ${index} requires productId`);
 		}
 
 		if (!isString(item.name)) {
-			throw new ValidationError(
-				`Purchase item at index ${index} must have a valid name`,
-			);
+			throw new ValidationError(`Purchase item at index ${index} requires name`);
 		}
 
 		if (!isNumber(item.quantity) || item.quantity <= 0) {
-			throw new ValidationError(
-				`Purchase item at index ${index} must have a positive quantity`,
-			);
+			throw new ValidationError(`Purchase item at index ${index} quantity must be positive`);
 		}
 
 		if (!isNumber(item.price) || item.price < 0) {
-			throw new ValidationError(
-				`Purchase item at index ${index} must have a non-negative price`,
-			);
+			throw new ValidationError(`Purchase item at index ${index} price must be non-negative`);
 		}
-
-		return {
-			productId: item.productId as string,
-			name: item.name as string,
-			quantity: item.quantity as number,
-			price: item.price as number,
-		};
 	});
 
-	return {
-		orderId: payload.orderId,
-		revenue: payload.revenue,
-		currency: payload.currency,
-		items,
-	};
+	return payload as PurchasePayload;
 }
 
 export function validateAddToCartPayload(payload: unknown): AddToCartPayload {
@@ -84,42 +58,26 @@ export function validateAddToCartPayload(payload: unknown): AddToCartPayload {
 	}
 
 	if (!isString(payload.productId)) {
-		throw new ValidationError(
-			"AddToCart payload must contain a valid productId string",
-		);
+		throw new ValidationError("AddToCart requires productId string");
 	}
 
 	if (!isString(payload.name)) {
-		throw new ValidationError(
-			"AddToCart payload must contain a valid name string",
-		);
+		throw new ValidationError("AddToCart requires name string");
 	}
 
 	if (!isNumber(payload.price) || payload.price < 0) {
-		throw new ValidationError("AddToCart price must be a non-negative number");
+		throw new ValidationError("AddToCart price must be non-negative");
 	}
 
 	if (!isNumber(payload.quantity) || payload.quantity <= 0) {
-		throw new ValidationError("AddToCart quantity must be a positive number");
+		throw new ValidationError("AddToCart quantity must be positive");
 	}
 
-	const validated: AddToCartPayload = {
-		productId: payload.productId,
-		name: payload.name,
-		price: payload.price,
-		quantity: payload.quantity,
-	};
-
-	if (payload.currency !== undefined) {
-		if (!isString(payload.currency) || payload.currency.length !== 3) {
-			throw new ValidationError(
-				"AddToCart currency must be a valid 3-letter currency code",
-			);
-		}
-		validated.currency = payload.currency;
+	if (payload.currency !== undefined && (!isString(payload.currency) || payload.currency.length !== 3)) {
+		throw new ValidationError("AddToCart currency must be a 3-letter code");
 	}
 
-	return validated;
+	return payload as AddToCartPayload;
 }
 
 export function validateRemoveFromCartPayload(
@@ -130,19 +88,12 @@ export function validateRemoveFromCartPayload(
 	}
 
 	if (!isString(payload.productId)) {
-		throw new ValidationError(
-			"RemoveFromCart payload must contain a valid productId string",
-		);
+		throw new ValidationError("RemoveFromCart requires productId string");
 	}
 
 	if (!isNumber(payload.quantity) || payload.quantity <= 0) {
-		throw new ValidationError(
-			"RemoveFromCart quantity must be a positive number",
-		);
+		throw new ValidationError("RemoveFromCart quantity must be positive");
 	}
 
-	return {
-		productId: payload.productId,
-		quantity: payload.quantity,
-	};
+	return payload as RemoveFromCartPayload;
 }

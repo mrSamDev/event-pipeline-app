@@ -18,85 +18,82 @@ const EVENT_TYPES = [
 	"video_pause",
 ];
 
-function generateEventId() {
-	return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-		const r = (Math.random() * 16) | 0;
-		const v = c === "x" ? r : (r & 0x3) | 0x8;
-		return v.toString(16);
-	});
-}
-
-function generateUserId() {
-	return `user_${Math.floor(Math.random() * 1000000)}`;
-}
-
-function generateSessionId() {
-	return `session_${Math.floor(Math.random() * 100000)}`;
-}
-
 function generatePayload(eventType) {
-	const basePayload = {
-		userAgent: "LoadTest/1.0",
-		ip: "127.0.0.1",
-	};
-
 	switch (eventType) {
+		case "session_start":
+			return {
+				deviceType: "desktop",
+				browser: "Chrome",
+				os: "macOS",
+				screenResolution: "1920x1080",
+				timezone: "America/New_York",
+				language: "en-US",
+			};
 		case "page_view":
 			return {
-				...basePayload,
 				url: `/page/${Math.floor(Math.random() * 100)}`,
+				title: `Page ${Math.floor(Math.random() * 100)}`,
 				referrer: "/",
 			};
 		case "search":
 			return {
-				...basePayload,
 				query: `search_term_${Math.floor(Math.random() * 1000)}`,
-				results: 42,
+				resultsCount: Math.floor(Math.random() * 100),
 			};
 		case "purchase":
 			return {
-				...basePayload,
-				amount: Math.floor(Math.random() * 10000) / 100,
+				orderId: `order_${Math.floor(Math.random() * 1000000)}`,
+				revenue: Math.floor(Math.random() * 10000) / 100,
 				currency: "USD",
-				productId: `prod_${Math.floor(Math.random() * 500)}`,
+				items: [
+					{
+						productId: `prod_${Math.floor(Math.random() * 500)}`,
+						name: `Product ${Math.floor(Math.random() * 500)}`,
+						quantity: Math.floor(Math.random() * 5) + 1,
+						price: Math.floor(Math.random() * 10000) / 100,
+					},
+				],
 			};
 		case "add_to_cart":
 			return {
-				...basePayload,
 				productId: `prod_${Math.floor(Math.random() * 500)}`,
+				name: `Product ${Math.floor(Math.random() * 500)}`,
+				price: Math.floor(Math.random() * 10000) / 100,
 				quantity: Math.floor(Math.random() * 5) + 1,
+				currency: "USD",
 			};
 		case "remove_from_cart":
 			return {
-				...basePayload,
 				productId: `prod_${Math.floor(Math.random() * 500)}`,
+				quantity: Math.floor(Math.random() * 5) + 1,
 			};
 		case "button_click":
 			return {
-				...basePayload,
 				buttonId: `btn_${Math.floor(Math.random() * 50)}`,
-				label: "Click Me",
+				buttonText: "Click Me",
+				elementClass: "button-primary",
 			};
 		case "form_submit":
 			return {
-				...basePayload,
 				formId: `form_${Math.floor(Math.random() * 20)}`,
-				fields: ["email", "name"],
+				formName: `Form ${Math.floor(Math.random() * 20)}`,
+				fields: { email: "test", name: "test" },
 			};
 		case "video_play":
 			return {
-				...basePayload,
 				videoId: `video_${Math.floor(Math.random() * 100)}`,
-				position: 0,
+				videoTitle: `Video ${Math.floor(Math.random() * 100)}`,
+				duration: 180,
+				currentTime: 0,
 			};
 		case "video_pause":
 			return {
-				...basePayload,
 				videoId: `video_${Math.floor(Math.random() * 100)}`,
-				position: Math.floor(Math.random() * 180),
+				currentTime: Math.floor(Math.random() * 180),
+				percentWatched: Math.floor(Math.random() * 100),
 			};
 		default:
-			return basePayload;
+			return {};
 	}
 }
 
@@ -104,8 +101,8 @@ function generateEvent() {
 	const eventType = EVENT_TYPES[Math.floor(Math.random() * EVENT_TYPES.length)];
 	return {
 		eventId: uuidv4(),
-		userId: generateUserId(),
-		sessionId: generateSessionId(),
+		userId: `user_${Math.floor(Math.random() * 100000)}`,
+		sessionId: `session_${Math.floor(Math.random() * 10000)}`,
 		type: eventType,
 		payload: generatePayload(eventType),
 		occurredAt: new Date().toISOString(),
@@ -122,44 +119,72 @@ function generateBatch(size) {
 
 export const options = {
 	scenarios: {
-		// Scenario 1: Single event requests at high RPS
-		single_events: {
+		// Current load: 12 events/sec baseline
+		baseline: {
 			executor: "constant-arrival-rate",
-			rate: 1000000, // 1M RPS for single events
+			rate: 12,
 			timeUnit: "1s",
 			duration: "60s",
-			preAllocatedVUs: 10000,
-			maxVUs: 50000,
+			preAllocatedVUs: 5,
+			maxVUs: 20,
 			exec: "singleEvent",
+			startTime: "0s",
 		},
 
-		// Scenario 2: Batch event requests
-		batch_events: {
+		// Target load (5x): 58 events/sec sustained
+		// Using batches for efficiency
+		target_load_small_batch: {
 			executor: "constant-arrival-rate",
-			rate: 100000, // 100K RPS with batch size of 10 = 1M events/s
+			rate: 6,
 			timeUnit: "1s",
-			duration: "60s",
-			preAllocatedVUs: 5000,
-			maxVUs: 20000,
-			exec: "batchEvents",
+			duration: "180s",
+			preAllocatedVUs: 10,
+			maxVUs: 30,
+			exec: "smallBatch",
+			startTime: "60s",
 		},
 
-		// Scenario 3: Large batches for remaining 3M RPS
-		large_batch_events: {
+		// Spike test: 10x target = 580 events/sec for 30s
+		spike_test: {
 			executor: "constant-arrival-rate",
-			rate: 30000, // 30K RPS with batch size of 100 = 3M events/s
+			rate: 58,
+			timeUnit: "1s",
+			duration: "30s",
+			preAllocatedVUs: 30,
+			maxVUs: 100,
+			exec: "smallBatch",
+			startTime: "240s",
+		},
+
+		// Sustained high load: 20x target = 1160 events/sec for 60s
+		sustained_high: {
+			executor: "constant-arrival-rate",
+			rate: 116,
 			timeUnit: "1s",
 			duration: "60s",
-			preAllocatedVUs: 5000,
-			maxVUs: 20000,
-			exec: "largeBatchEvents",
+			preAllocatedVUs: 50,
+			maxVUs: 150,
+			exec: "smallBatch",
+			startTime: "270s",
+		},
+
+		// Peak load test: 50x target = 2900 events/sec for 30s
+		peak_load: {
+			executor: "constant-arrival-rate",
+			rate: 290,
+			timeUnit: "1s",
+			duration: "30s",
+			preAllocatedVUs: 100,
+			maxVUs: 300,
+			exec: "smallBatch",
+			startTime: "330s",
 		},
 	},
 
 	thresholds: {
 		http_req_duration: ["p(95)<500", "p(99)<1000"],
-		http_req_failed: ["rate<0.05"], // Less than 5% errors
-		errors: ["rate<0.05"],
+		http_req_failed: ["rate<0.01"],
+		errors: ["rate<0.01"],
 	},
 };
 
@@ -196,7 +221,7 @@ export function singleEvent() {
 	errorRate.add(!success);
 }
 
-export function batchEvents() {
+export function smallBatch() {
 	const batch = generateBatch(10);
 
 	const params = {
@@ -227,14 +252,45 @@ export function batchEvents() {
 	errorRate.add(!success);
 }
 
-export function largeBatchEvents() {
-	const batch = generateBatch(100);
+export function mediumBatch() {
+	const batch = generateBatch(50);
 
 	const params = {
 		headers: {
 			"Content-Type": "application/json",
 		},
 		timeout: "15s",
+	};
+
+	const response = http.post(
+		`${API_BASE_URL}/events`,
+		JSON.stringify(batch),
+		params,
+	);
+
+	const success = check(response, {
+		"status is 202": (r) => r.status === 202,
+		"response has correct count": (r) => {
+			try {
+				const body = JSON.parse(r.body);
+				return body.count === 50;
+			} catch {
+				return false;
+			}
+		},
+	});
+
+	errorRate.add(!success);
+}
+
+export function largeBatch() {
+	const batch = generateBatch(100);
+
+	const params = {
+		headers: {
+			"Content-Type": "application/json",
+		},
+		timeout: "20s",
 	};
 
 	const response = http.post(
@@ -267,15 +323,12 @@ export function handleSummary(data) {
 
 function textSummary(data, options = {}) {
 	const indent = options.indent || "";
-	const _enableColors = options.enableColors || false;
-
 	const metrics = data.metrics;
-	const _scenarios = data.root_group.groups || {};
 
 	let output = `\n${indent}Load Test Summary\n`;
 	output += `${indent}${"=".repeat(50)}\n\n`;
 
-	if (metrics.http_reqs && metrics.http_reqs.values) {
+	if (metrics.http_reqs?.values) {
 		output += `${indent}HTTP Requests:\n`;
 		output += `${indent}  Total: ${metrics.http_reqs.values.count || 0}\n`;
 		if (metrics.http_reqs.values.rate != null) {
@@ -283,23 +336,32 @@ function textSummary(data, options = {}) {
 		}
 	}
 
-	if (metrics.http_req_duration && metrics.http_req_duration.values) {
+	if (metrics.http_req_duration?.values) {
 		const values = metrics.http_req_duration.values;
 		output += `${indent}Response Time:\n`;
-		if (values.min != null) output += `${indent}  Min: ${values.min.toFixed(2)}ms\n`;
-		if (values.med != null) output += `${indent}  Med: ${values.med.toFixed(2)}ms\n`;
-		if (values.avg != null) output += `${indent}  Avg: ${values.avg.toFixed(2)}ms\n`;
-		if (values["p(95)"] != null) output += `${indent}  P95: ${values["p(95)"].toFixed(2)}ms\n`;
-		if (values["p(99)"] != null) output += `${indent}  P99: ${values["p(99)"].toFixed(2)}ms\n`;
-		if (values.max != null) output += `${indent}  Max: ${values.max.toFixed(2)}ms\n\n`;
+		if (values.min != null)
+			output += `${indent}  Min: ${values.min.toFixed(2)}ms\n`;
+		if (values.med != null)
+			output += `${indent}  Med: ${values.med.toFixed(2)}ms\n`;
+		if (values.avg != null)
+			output += `${indent}  Avg: ${values.avg.toFixed(2)}ms\n`;
+		if (values["p(95)"] != null)
+			output += `${indent}  P95: ${values["p(95)"].toFixed(2)}ms\n`;
+		if (values["p(99)"] != null)
+			output += `${indent}  P99: ${values["p(99)"].toFixed(2)}ms\n`;
+		if (values.max != null)
+			output += `${indent}  Max: ${values.max.toFixed(2)}ms\n\n`;
 	}
 
-	if (metrics.http_req_failed && metrics.http_req_failed.values && metrics.http_req_failed.values.rate != null) {
+	if (
+		metrics.http_req_failed?.values &&
+		metrics.http_req_failed.values.rate != null
+	) {
 		const failRate = (metrics.http_req_failed.values.rate * 100).toFixed(2);
 		output += `${indent}Failed Requests: ${failRate}%\n\n`;
 	}
 
-	if (metrics.errors && metrics.errors.values && metrics.errors.values.rate != null) {
+	if (metrics.errors?.values && metrics.errors.values.rate != null) {
 		const errorRate = (metrics.errors.values.rate * 100).toFixed(2);
 		output += `${indent}Error Rate: ${errorRate}%\n\n`;
 	}

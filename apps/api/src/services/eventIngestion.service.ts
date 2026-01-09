@@ -29,10 +29,10 @@ export class EventIngestionService {
 	private coordinator: FlushCoordinator;
 	private isShuttingDown = false;
 
-	private readonly maxBufferSize = 2000;
-	private readonly flushIntervalMs = 200;
-	private readonly backpressureThreshold = 10000;
-	private readonly maxConcurrentFlushes = 5;
+	private readonly maxBufferSize = 5000;
+	private readonly flushIntervalMs = 100;
+	private readonly backpressureThreshold = 50000;
+	private readonly maxConcurrentFlushes = 20;
 
 	constructor(private repository: EventRepository) {
 		this.buffer = new BufferManager(
@@ -66,7 +66,7 @@ export class EventIngestionService {
 		this.buffer.add(event);
 
 		if (
-			this.buffer.size % 2000 === 0 &&
+			this.buffer.size % 5000 === 0 &&
 			process.env.NODE_ENV !== "production"
 		) {
 			logger.debug("[EventIngestionService] Buffer size milestone", {

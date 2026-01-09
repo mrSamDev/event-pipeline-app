@@ -1,6 +1,7 @@
 import { check } from "k6";
 import http from "k6/http";
 import { Rate } from "k6/metrics";
+import { uuidv4 } from "https://jslib.k6.io/k6-utils/1.4.0/index.js";
 
 const errorRate = new Rate("errors");
 
@@ -20,6 +21,7 @@ const EVENT_TYPES = [
 function generateEvent() {
 	const eventType = EVENT_TYPES[Math.floor(Math.random() * EVENT_TYPES.length)];
 	return {
+		eventId: uuidv4(),
 		userId: `user_${Math.floor(Math.random() * 100000)}`,
 		sessionId: `session_${Math.floor(Math.random() * 10000)}`,
 		type: eventType,

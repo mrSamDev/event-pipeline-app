@@ -11,11 +11,13 @@ export async function connectDatabase(mongoUri: string): Promise<void> {
 
 	try {
 		await mongoose.connect(mongoUri, {
-			maxPoolSize: 50,
-			minPoolSize: 10,
+			maxPoolSize: 200,
+			minPoolSize: 20,
 			serverSelectionTimeoutMS: 5000,
 			socketTimeoutMS: 45000,
 			retryWrites: true,
+			maxIdleTimeMS: 30000,
+			waitQueueTimeoutMS: 10000,
 		});
 
 		logger.info("MongoDB connected successfully", {

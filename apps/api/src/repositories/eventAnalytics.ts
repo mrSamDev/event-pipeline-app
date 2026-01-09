@@ -107,50 +107,51 @@ export async function getUserMetrics(options?: {
 
 export async function getAnalyticsStats(): Promise<AnalyticsStats> {
 	try {
-		const totalUsers = await Event.distinct("userId").then(
-			(users) => users.length,
-		);
-		const totalEvents = await Event.countDocuments();
-
-		const eventsByType = await Event.aggregate([
-			{
-				$group: {
-					_id: "$type",
-					count: { $sum: 1 },
-				},
-			},
-			{
-				$project: {
-					type: "$_id",
-					count: 1,
-					_id: 0,
-				},
-			},
-			{
-				$sort: { count: -1 },
-			},
-		]);
-
-		const eventsByDay = await Event.aggregate([
-			{
-				$group: {
-					_id: {
-						$dateToString: { format: "%Y-%m-%d", date: "$occurredAt" },
+		const [totalUsersResult, totalEvents, eventsByType, eventsByDay] =
+			await Promise.all([
+				Event.distinct("userId"),
+				Event.countDocuments(),
+				Event.aggregate([
+					{
+						$group: {
+							_id: "$type",
+							count: { $sum: 1 },
+						},
 					},
-					count: { $sum: 1 },
-				},
-			},
-			{
-				$project: {
-					date: "$_id",
-					count: 1,
-					_id: 0,
-				},
-			},
-			{
-				$sort: { date: 1 },
-			},
-		]);
+					{
+						$project: {
+							type: "$_id",
+							count: 1,
+							_id: 0,
+						},
+					},
+					{
+						$sort: { count: -1 },
+					},
+				]),
+				Event.aggregate([
+					{
+						$group: {
+							_id: {
+								$dateToString: { format: "%Y-%m-%d", date: "$occurredAt" },
+							},
+							count: { $sum: 1 },
+						},
+					},
+					{
+						$project: {
+							date: "$_id",
+							count: 1,
+							_id: 0,
+						},
+					},
+					{
+						$sort: { date: 1 },
+					},
+				]),
+			]);
+
+		const totalUsers = totalUsersResult.length;
 
 		logger.debug("[EventRepository] Retrieved analytics stats", {
 			totalUsers,

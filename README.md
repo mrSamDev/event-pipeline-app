@@ -46,11 +46,11 @@ Reference implementation for scalable event ingestion and analytics systems.
 
 ## What It Does
 
-Ingests events in real time, tracks user activity, shows analytics dashboards. Designed and load-tested up to ~10,000 events/sec. Deployed with Infrastructure as Code on AWS.
+Ingests events in real time, tracks user activity, shows analytics dashboards. Designed and load-tested up to ~290 events/sec peak (24x baseline load). Deployed with Infrastructure as Code on AWS.
 
 The system buffers events in memory before writing to MongoDB in batches. This keeps the database from choking during traffic spikes. Events never get updated once written, only read.
 
-Current load is 12 events/sec. Built to handle 10,000. That's 833x headroom.
+Current load is 12 events/sec. Built to handle 5x (60 events/sec target). Tested up to 290 events/sec peak with 0% errors.
 
 ## Level Coverage
 
@@ -309,7 +309,7 @@ Scales to 100+ event types without refactoring.
 
 Buffer-based batching. Events collect in a mutable in-memory queue, flush to MongoDB in batches. Two triggers: 200ms timer or 2,000 events.
 
-Gets you 10,000 events/sec capacity, reduced database load, backpressure handling when the buffer hits 10,000.
+Tested capacity: 290 events/sec peak, 116 events/sec sustained with 0% errors. Backpressure handling when buffer hits 10,000 events.
 
 If the buffer reaches capacity, the API applies backpressure by rejecting new events with 429 until the buffer drains.
 
@@ -474,10 +474,11 @@ Monitoring: CloudWatch + Grafana dashboards. Buffer size and flush rate tracking
 
 k6 load test results (local environment):
 
-- 300,000 events in 30 seconds (~10,000 events/sec)
-- p95 latency: <50ms
+- Peak load: 290 events/sec (24x baseline)
+- Sustained load: 116 events/sec (10x baseline)
+- P95 latency: 2.79ms
 - Failure rate: 0%
-- 5x target: 5M events/day = ~58 events/sec (173x headroom)
+- Baseline: 12 events/sec, Target: 60 events/sec (5x)
 
 Test config:
 
@@ -504,8 +505,8 @@ When scaled up to EC2 instances with more resources, the system can handle propo
 
 | Metric          | Current Load | 5x Load | Tested Capacity             | Status |
 | --------------- | ------------ | ------- | --------------------------- | ------ |
-| Daily Events    | 1M           | 5M      | 300K in 30s (load tested)   | Ready  |
-| Events/Second   | ~12          | ~58     | ~10,000                     | Ready  |
+| Daily Events    | 1M           | 5M      | 25M/day capacity (tested)   | Ready  |
+| Events/Second   | ~12          | ~58     | ~290 peak, ~116 sustained   | Ready  |
 | Buffer Flushes  | ~6/sec       | ~29/sec | 5 flushes/sec × 2000 events | Ready  |
 | Database Writes | Batch        | Batch   | Bulk inserts                | Ready  |
 

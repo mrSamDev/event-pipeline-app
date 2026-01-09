@@ -8,39 +8,22 @@ export function validateVideoPlayPayload(payload: unknown): VideoPlayPayload {
 	}
 
 	if (!isString(payload.videoId)) {
-		throw new ValidationError(
-			"VideoPlay payload must contain a valid videoId string",
-		);
+		throw new ValidationError("VideoPlay requires videoId string");
 	}
 
-	const validated: VideoPlayPayload = { videoId: payload.videoId };
-
-	if (payload.videoTitle !== undefined) {
-		if (!isString(payload.videoTitle)) {
-			throw new ValidationError("VideoPlay videoTitle must be a string");
-		}
-		validated.videoTitle = payload.videoTitle;
+	if (payload.videoTitle !== undefined && !isString(payload.videoTitle)) {
+		throw new ValidationError("VideoPlay videoTitle must be a string");
 	}
 
-	if (payload.duration !== undefined) {
-		if (!isNumber(payload.duration) || payload.duration < 0) {
-			throw new ValidationError(
-				"VideoPlay duration must be a non-negative number",
-			);
-		}
-		validated.duration = payload.duration;
+	if (payload.duration !== undefined && (!isNumber(payload.duration) || payload.duration < 0)) {
+		throw new ValidationError("VideoPlay duration must be non-negative");
 	}
 
-	if (payload.currentTime !== undefined) {
-		if (!isNumber(payload.currentTime) || payload.currentTime < 0) {
-			throw new ValidationError(
-				"VideoPlay currentTime must be a non-negative number",
-			);
-		}
-		validated.currentTime = payload.currentTime;
+	if (payload.currentTime !== undefined && (!isNumber(payload.currentTime) || payload.currentTime < 0)) {
+		throw new ValidationError("VideoPlay currentTime must be non-negative");
 	}
 
-	return validated;
+	return payload as VideoPlayPayload;
 }
 
 export function validateVideoPausePayload(payload: unknown): VideoPausePayload {
@@ -49,34 +32,16 @@ export function validateVideoPausePayload(payload: unknown): VideoPausePayload {
 	}
 
 	if (!isString(payload.videoId)) {
-		throw new ValidationError(
-			"VideoPause payload must contain a valid videoId string",
-		);
+		throw new ValidationError("VideoPause requires videoId string");
 	}
 
 	if (!isNumber(payload.currentTime) || payload.currentTime < 0) {
-		throw new ValidationError(
-			"VideoPause currentTime must be a non-negative number",
-		);
+		throw new ValidationError("VideoPause currentTime must be non-negative");
 	}
 
-	const validated: VideoPausePayload = {
-		videoId: payload.videoId,
-		currentTime: payload.currentTime,
-	};
-
-	if (payload.percentWatched !== undefined) {
-		if (
-			!isNumber(payload.percentWatched) ||
-			payload.percentWatched < 0 ||
-			payload.percentWatched > 100
-		) {
-			throw new ValidationError(
-				"VideoPause percentWatched must be a number between 0 and 100",
-			);
-		}
-		validated.percentWatched = payload.percentWatched;
+	if (payload.percentWatched !== undefined && (!isNumber(payload.percentWatched) || payload.percentWatched < 0 || payload.percentWatched > 100)) {
+		throw new ValidationError("VideoPause percentWatched must be between 0 and 100");
 	}
 
-	return validated;
+	return payload as VideoPausePayload;
 }

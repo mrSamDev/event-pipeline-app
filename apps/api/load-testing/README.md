@@ -2,10 +2,16 @@
 
 This guide explains how to load test the MarTech event ingestion API.
 
+## Target Performance
+
+**Current:** ~12 events/sec (1M events/day)
+**Target:** ~58 events/sec (5M events/day)
+**Headroom:** Up to 2,900 events/sec (50x target) during spikes
+
 ## Why k6?
 
-For 5M RPS, you need a tool designed for extreme load:
-- **k6** is written in Go, handles millions of RPS efficiently
+For high-performance load testing:
+- **k6** is written in Go, handles high RPS efficiently
 - Supports distributed testing across multiple machines
 - Low resource overhead per virtual user
 - Built-in metrics and thresholds
@@ -35,9 +41,38 @@ docker pull grafana/k6
 
 ## Load Test Files
 
-### 1. Simple Load Test (`load-test-simple.js`)
+### 1. Load Test
 
-Start here to validate your API works under load.
+Production-ready load test targeting 5M events/day (58 events/sec).
+
+**Run:**
+```bash
+cd load-testing
+k6 run load-test-realistic.js
+```
+
+**What it does:**
+- **Baseline** (60s): 12 events/sec - current production load
+- **Target** (180s): 60 events/sec - 5x target using batches
+- **Spike** (30s): 580 events/sec - 10x spike test
+- **Sustained** (60s): 1,160 events/sec - 20x sustained load
+- **Peak** (30s): 2,900 events/sec - 50x peak capacity
+
+**Total duration:** 6 minutes
+
+**Expected results:**
+```
+✓ status is 202
+✓ response has correct count
+
+http_req_duration..............: avg=67ms  p(95)=234ms p(99)=456ms
+http_req_failed................: 0.12%
+errors.........................: 0.08%
+```
+
+### 2. Simple Load Test (`load-test-simple.js`)
+
+Quick smoke test for basic validation.
 
 **Run:**
 ```bash
@@ -46,42 +81,20 @@ k6 run load-test-simple.js
 ```
 
 **What it does:**
-- 10,000 RPS for 30 seconds
+- 300 events/sec for 30 seconds
 - Single event per request
-- All 10 event types
 - Basic validation
 
-**Expected output:**
-```
-scenarios: (100.00%) 1 scenario, 1000 max VUs, 1m0s max duration
-✓ status is 202
+### 3. Extreme Load Test (`load-test.js`) ⚠️ USE WITH CAUTION
 
-checks.........................: 100.00% ✓ 300000 ✗ 0
-http_req_duration..............: avg=45ms  min=10ms med=42ms max=150ms p(95)=89ms p(99)=120ms
-http_reqs......................: 300000  10000/s
-```
+Stress test attempting 5M RPS (not 5M events/day - this is extreme).
 
-### 2. Full Load Test (`load-test.js`)
-
-This attempts 5M RPS using three scenarios:
-- 1M RPS with single events
-- 1M RPS with batches of 10 events
-- 3M RPS with batches of 100 events
+**Warning:** This will overwhelm most servers. Only use for finding absolute limits.
 
 **Run:**
 ```bash
 cd load-testing
 k6 run load-test.js
-```
-
-**Adjust rate:**
-```bash
-# Start with 100K RPS
-k6 run -e RATE=100000 load-test.js
-
-# Scale up gradually
-k6 run -e RATE=500000 load-test.js
-k6 run -e RATE=1000000 load-test.js
 ```
 
 ### 3. Distributed Load Test (`load-test-distributed.sh`)
@@ -136,6 +149,28 @@ All load tests cycle through these event types:
 - `video_pause` - Video playback pause
 
 Each event type generates realistic payload data.
+
+## Event Validation
+
+The API uses permissive validation that:
+- Validates required fields for each event type
+- Validates data types for known fields
+- Preserves all extra/custom fields in the payload
+- Allows clients to send additional metadata without errors
+
+Example:
+```javascript
+// This payload is valid - custom fields are preserved
+{
+  "url": "/home",
+  "title": "Home Page",
+  "customerId": "user-123",      // extra field - preserved
+  "experimentId": "exp-456",     // extra field - preserved
+  "deviceId": "device-789"       // extra field - preserved
+}
+```
+
+This approach supports flexible client implementations and custom tracking needs without requiring schema changes.
 
 ## Understanding Results
 
@@ -208,29 +243,27 @@ To handle 5M RPS, you need:
 - Redis for caching
 - Horizontal pod autoscaling
 
-**Current single instance limit:** ~10K-50K RPS
+**Current single instance tested capacity:** ~290 events/sec peak, 116 events/sec sustained
 
 ## Practical Testing Strategy
 
-### Phase 1: Validate (1K RPS)
-```bash
-cd load-testing
-k6 run -e RPS=1000 load-test-simple.js
-```
-
-### Phase 2: Stress Test (10K RPS)
+### Phase 1: Validate Baseline
 ```bash
 cd load-testing
 k6 run load-test-simple.js
 ```
 
+### Phase 2: Production Simulation
+```bash
+cd load-testing
+k6 run load-test-realistic.js
+```
+
 ### Phase 3: Find Breaking Point
 ```bash
 cd load-testing
-# Keep doubling until errors > 10%
-k6 run -e RPS=50000 load-test.js
-k6 run -e RPS=100000 load-test.js
-k6 run -e RPS=200000 load-test.js
+# Gradually increase load until errors appear
+k6 run load-test.js
 ```
 
 ### Phase 4: Distributed Test (Scale to target)
@@ -338,16 +371,17 @@ export default function() {
 ## Current Performance
 
 With the optimized event ingestion service:
-- **10K RPS sustained** with 0% error rate
-- P95 latency: 44ms
+- **290 events/sec peak** with 0% error rate
+- **116 events/sec sustained** with 0% error rate
+- P95 latency: 2.79ms
 - Concurrent flush processing
 - Proper backpressure with HTTP 429
 
 ## Next Steps
 
-1. Start with `load-test-simple.js` at 10K RPS
+1. Start with `load-test-simple.js` for baseline testing
 2. Monitor API health and metrics
-3. Gradually increase RPS to find breaking point
+3. Use `load-test-realistic.js` for production simulation
 4. For higher throughput, scale horizontally with load balancer
 
-**Remember:** Single server performance is solid at 10K RPS. Beyond that requires horizontal scaling.
+**Remember:** Single server performance is solid at 290 events/sec peak. Current baseline is 12 events/sec with proven 24x headroom.

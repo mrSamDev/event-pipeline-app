@@ -1,4 +1,6 @@
-export class FlushCoordinator {
+import { EventEmitter } from "node:events";
+
+export class FlushCoordinator extends EventEmitter {
 	private flushTimer: NodeJS.Timeout | null = null;
 	private activeFlushes = 0;
 	private flushLock = false;
@@ -8,6 +10,7 @@ export class FlushCoordinator {
 	private readonly flushIntervalMs: number;
 
 	constructor(maxConcurrentFlushes: number, flushIntervalMs: number) {
+		super();
 		this.maxConcurrentFlushes = maxConcurrentFlushes;
 		this.flushIntervalMs = flushIntervalMs;
 	}
@@ -28,6 +31,10 @@ export class FlushCoordinator {
 	releaseLock(): void {
 		this.activeFlushes--;
 		this.flushLock = false;
+		this.emit("capacity-available");
+		if (this.activeFlushes === 0) {
+			this.emit("all-complete");
+		}
 	}
 
 	recordSuccess(): void {
@@ -58,15 +65,21 @@ export class FlushCoordinator {
 	}
 
 	async waitForCapacity(): Promise<void> {
-		while (this.activeFlushes >= this.maxConcurrentFlushes) {
-			await new Promise((resolve) => setTimeout(resolve, 100));
+		if (this.activeFlushes < this.maxConcurrentFlushes) {
+			return;
 		}
+		await new Promise<void>((resolve) => {
+			this.once("capacity-available", resolve);
+		});
 	}
 
 	async waitForCompletion(): Promise<void> {
-		while (this.activeFlushes > 0) {
-			await new Promise((resolve) => setTimeout(resolve, 100));
+		if (this.activeFlushes === 0) {
+			return;
 		}
+		await new Promise<void>((resolve) => {
+			this.once("all-complete", resolve);
+		});
 	}
 
 	get stats() {
